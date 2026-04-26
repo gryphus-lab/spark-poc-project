@@ -1,0 +1,3 @@
+# Runtime-only Python requirements for the Docker image.
+# The Apache Spark base image already contains pyspark, so only add
+# additional runtime packages here when needed.
