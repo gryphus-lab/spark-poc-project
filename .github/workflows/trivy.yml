@@ -36,7 +36,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: 'gryphus-lab/cvbuilder:${{ github.sha }}'
+          image-ref: 'gryphus-lab/spark-poc-project:${{ github.sha }}'
           format: 'sarif'
           limit-severities-for-sarif: true
           output: 'trivy-results.sarif'
