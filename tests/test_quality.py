@@ -27,6 +27,7 @@ def test_null_completeness(spark):
 
 # --- EXPECTED_SCHEMA structure tests ---
 
+
 def test_expected_schema_field_count():
     """EXPECTED_SCHEMA must define exactly 3 fields."""
     assert len(EXPECTED_SCHEMA.fields) == 3
@@ -75,6 +76,7 @@ def test_expected_schema_status_nullable():
 
 
 # --- Data quality checks using EXPECTED_SCHEMA ---
+
 
 def test_null_name_allowed_by_schema(spark):
     """Rows with a null 'name' value are accepted by EXPECTED_SCHEMA (nullable=True)."""

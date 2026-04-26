@@ -88,10 +88,12 @@ def test_clean_text_data_numbers_in_string(spark):
 
 def test_clean_text_data_preserves_other_columns(spark):
     """Only the target column is modified; other columns are left untouched."""
-    schema = StructType([
-        StructField("id", IntegerType(), nullable=False),
-        StructField("name", StringType(), nullable=True),
-    ])
+    schema = StructType(
+        [
+            StructField("id", IntegerType(), nullable=False),
+            StructField("name", StringType(), nullable=True),
+        ]
+    )
     df = spark.createDataFrame([(1, "ALICE"), (2, "BOB")], schema=schema)
     result_df = clean_text_data(df, "name")
     rows = {row["id"]: row["name"] for row in result_df.collect()}
