@@ -9,7 +9,7 @@ ruff = "latest"
 
 [env]
 # Point Spark to the Java path managed by mise
-JAVA_HOME = "{{config_root}}/installs/java/openjdk-25"
+JAVA_HOME = "~/.local/share/mise/installs/java/openjdk-25"
 # Add your src folder to PYTHONPATH so imports work locally
 PYTHONPATH = "./src"
 PROJECT_NAME = "{{ config_root | basename }}"
