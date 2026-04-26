@@ -16,9 +16,21 @@ def spark():
         "~/.local/share/mise/installs/java/openjdk-25"
     )
 
+    # Create warehouse directory
+    import tempfile
+    warehouse_dir = tempfile.mkdtemp(prefix="iceberg_test_")
+    os.environ["SPARK_LOCAL_DIRS"] = warehouse_dir
+
     spark = (
         SparkSession.builder.master("local[1]")
         .appName("pytest-pyspark-local")
+        .config(
+            "spark.sql.extensions",
+            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+        )
+        .config("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog")
+        .config("spark.sql.catalog.local.type", "hadoop")
+        .config("spark.sql.catalog.local.warehouse", warehouse_dir)
         .getOrCreate()
     )
     yield spark
