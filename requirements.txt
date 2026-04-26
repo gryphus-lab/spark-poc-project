@@ -3,5 +3,5 @@ pyspark>=3.5.0
 
 # Development & Testing
 pytest>=7.0.0
-pytest-cov>=4.0.0
+pytest-cov>=7.1.0
 ruff>=0.15.11
