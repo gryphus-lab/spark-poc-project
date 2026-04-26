@@ -1,6 +1,5 @@
 import sys
 import os
-from pyspark.sql.utils import AnalysisException
 
 # Ensure src is in the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -10,35 +9,31 @@ from src.transformations import clean_text_data, EXPECTED_SCHEMA
 
 
 def main():
-    spark = get_spark_session("Spark-Quality-POC")
+    spark = get_spark_session()
 
-    input_path = "/opt/spark/project/data/input/sample.csv"
-    output_path = "/opt/spark/project/data/output/processed_data"
+    # 1. BRONZE: Raw Ingestion (Append-only)
+    raw_df = spark.read.schema(EXPECTED_SCHEMA).csv(
+        "/opt/spark/project/data/input/sample.csv"
+    )
+    raw_df.writeTo("local.db.bronze_events").append()
 
-    try:
-        # 1. Load data with Schema Enforcement
-        # mode="FAILFAST" stops the job immediately if data doesn't match the schema
-        df = (
-            spark.read.format("csv")
-            .option("header", "true")
-            .option("mode", "FAILFAST")
-            .schema(EXPECTED_SCHEMA)
-            .load(input_path)
-        )
+    # 2. SILVER: Cleaned & Validated (Merge/Upsert)
+    cleaned_df = clean_text_data(raw_df, "name")
+    cleaned_df.createOrReplaceTempView("updates")
 
-        # 2. Apply transformations
-        processed_df = clean_text_data(df, "name")
+    # Iceberg supports SQL Merge (upsert logic)
+    spark.sql("""
+        MERGE INTO local.db.silver_users t
+        USING updates s ON t.id = s.id
+        WHEN MATCHED THEN UPDATE SET *
+        WHEN NOT MATCHED THEN INSERT *
+    """)
 
-        # 3. Write results
-        processed_df.write.mode("overwrite").parquet(output_path)
-        print(f"Successfully processed data to {output_path}")
-
-    except AnalysisException as e:
-        print(f"Data Quality Error: Input data does not match schema. {e}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-    finally:
-        spark.stop()
+    # 3. GOLD: Aggregated for BI
+    gold_df = spark.sql(
+        "SELECT status, count(*) FROM local.db.silver_users GROUP BY status"
+    )
+    gold_df.writeTo("local.db.gold_user_stats").createOrReplace()
 
 
 if __name__ == "__main__":

@@ -26,3 +26,20 @@ services:
       - spark-master
     environment:
       - SPARK_MASTER=spark://spark-master:7077
+
+  minio:
+    image: minio/minio
+    ports: ["9000:9000", "9001:9001"]
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password
+    command: server /data --console-address ":9001"
+
+  catalog:
+    image: tabulario/iceberg-rest
+    ports: ["8181:8181"]
+    environment:
+      - CATALOG_WAREHOUSE=s3a://warehouse/
+      - CATALOG_IO__IMPL=org.apache.iceberg.aws.s3.S3FileIO
+      - CATALOG_S3_ENDPOINT=http://minio:9000
+    depends_on: [minio]
