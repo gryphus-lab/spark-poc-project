@@ -17,7 +17,7 @@ def main():
 
         # 3. Upsert into Silver Table (Iceberg Format)
         # The 'local' catalog was defined in your SparkSession config earlier
-        upsert_to_silver(spark, silver_ready_df, "local.db.silver_users")
+        upsert_to_silver(spark, silver_ready_df, "local.db.silver_users", partition_spec="status")
 
         print("Silver layer upsert complete.")
     finally:

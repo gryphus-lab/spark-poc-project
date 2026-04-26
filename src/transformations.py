@@ -16,7 +16,7 @@ EXPECTED_SCHEMA = StructType(
 )
 
 
-def upsert_to_silver(spark, df, table_name, partition_spec=None, table_schema=None):
+def upsert_to_silver(spark, df, table_name, partition_spec=None, table_schema=None, merge_key="id"):
     """
     Upserts (Merges) data into an Iceberg Silver table.
 
@@ -25,8 +25,9 @@ def upsert_to_silver(spark, df, table_name, partition_spec=None, table_schema=No
         df: DataFrame to upsert
         table_name: Fully qualified table name (e.g., 'local.db.silver_users')
         partition_spec: Optional partition specification (e.g., 'status').
-                        If None, defaults to 'status' for backward compatibility.
+                        If None, no partitioning is applied.
         table_schema: Optional table schema. If None, derives from df.schema.
+        merge_key: Column name to use for MERGE matching (default "id").
     """
     # Create a unique temp view name to avoid collisions
     temp_view = f"incoming_{table_name.replace('.', '_')}_{uuid4().hex}"
@@ -44,10 +45,7 @@ def upsert_to_silver(spark, df, table_name, partition_spec=None, table_schema=No
 
     # Build partition clause
     partition_clause = ""
-    if partition_spec is None:
-        # Default to 'status' for backward compatibility
-        partition_clause = "PARTITIONED BY (status)"
-    elif partition_spec:
+    if partition_spec:
         partition_clause = f"PARTITIONED BY ({partition_spec})"
 
     # Ensure the target table exists (Bronze-to-Silver initialization)
@@ -60,15 +58,21 @@ def upsert_to_silver(spark, df, table_name, partition_spec=None, table_schema=No
 
     # Build explicit column lists for MERGE to fail early on mismatches
     columns = [f"`{col.replace('`', '')}`" for col in df.columns]
+
+    # Validate merge_key exists in columns
+    merge_key_escaped = f"`{merge_key.replace('`', '')}`"
+    if merge_key_escaped not in columns:
+        raise ValueError(f"Merge key '{merge_key}' not found in DataFrame columns: {df.columns}")
+
     insert_cols = ", ".join(columns)
     insert_values = ", ".join([f"s.{col}" for col in columns])
-    update_set = ", ".join([f"t.{col} = s.{col}" for col in columns if col != "`id`"])
+    update_set = ", ".join([f"t.{col} = s.{col}" for col in columns if col != merge_key_escaped])
 
     # Perform the Merge logic with explicit column lists
     spark.sql(f"""
         MERGE INTO {table_name} t
         USING {temp_view} s
-        ON t.id = s.id
+        ON t.{merge_key_escaped} = s.{merge_key_escaped}
         WHEN MATCHED THEN
             UPDATE SET {update_set}
         WHEN NOT MATCHED THEN

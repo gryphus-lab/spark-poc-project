@@ -1,6 +1,8 @@
 import pytest
 import os
 from pyspark.sql import SparkSession
+import tempfile
+import shutil
 
 
 @pytest.fixture(scope="session")
@@ -17,9 +19,7 @@ def spark():
     )
 
     # Create warehouse directory
-    import tempfile
     warehouse_dir = tempfile.mkdtemp(prefix="iceberg_test_")
-    os.environ["SPARK_LOCAL_DIRS"] = warehouse_dir
 
     spark = (
         SparkSession.builder.master("local[1]")
@@ -35,3 +35,6 @@ def spark():
     )
     yield spark
     spark.stop()
+    # Clean up the temporary warehouse directory
+    if os.path.exists(warehouse_dir):
+        shutil.rmtree(warehouse_dir)

@@ -101,7 +101,7 @@ def test_clean_text_data_preserves_other_columns(spark):
     assert rows[1] == "alice"
 
 
-@pytest.mark.xfail(reason="Iceberg not available in test environment")
+@pytest.mark.xfail(strict=True, reason="Iceberg not available in test environment")
 def test_upsert_to_silver_insert_only(spark):
     """Test upsert_to_silver function for insert-only case."""
     from pyspark.sql.functions import current_timestamp
@@ -117,7 +117,7 @@ def test_upsert_to_silver_insert_only(spark):
     table_name = "local.db.test_silver_table_insert"
 
     # Call the function
-    upsert_to_silver(spark, df, table_name)
+    upsert_to_silver(spark, df, table_name, partition_spec="status")
 
     # Verify the table was created and data inserted
     assert spark.catalog.tableExists(table_name)
@@ -132,7 +132,6 @@ def test_upsert_to_silver_insert_only(spark):
 
     # Clean up
     spark.sql(f"DROP TABLE {table_name}")
-    assert rows[2] == "bob"
 
 
 def test_clean_text_data_different_column_name(spark):
