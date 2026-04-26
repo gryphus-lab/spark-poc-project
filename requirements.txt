@@ -1,0 +1,6 @@
+# Core Spark Processing
+pyspark>=3.5.0
+
+# Development & Testing
+pytest>=7.0.0
+ruff>=0.15.11

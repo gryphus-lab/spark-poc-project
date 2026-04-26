@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  spark-master:
+    image: apache/spark:latest
+    container_name: spark-master
+    ports:
+      - "8080:8080" # Master Web UI
+      - "7077:7077" # Cluster communication
+    # Use standard Spark start command
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host 0.0.0.0
+
+  spark-worker:
+    image: apache/spark:latest
+    container_name: spark-worker
+    depends_on:
+      - spark-master
+    # Point worker to the master's container name
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+
+  spark-submit:
+    build: .
+    container_name: spark-submit
+    volumes:
+      - .:/opt/spark/project
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077

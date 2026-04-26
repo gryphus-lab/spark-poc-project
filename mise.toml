@@ -1,0 +1,57 @@
+[tools]
+# Ensure Java is installed as Spark requires it
+java = "openjdk-25"
+python = "3.14"
+# Optional: version of Spark used for local development/testing
+spark = "3.5.0"
+uv = "latest"
+ruff = "latest"
+
+[env]
+# Point Spark to the Java path managed by mise
+JAVA_HOME = "{{config_root}}/installs/java/openjdk-25"
+# Add your src folder to PYTHONPATH so imports work locally
+PYTHONPATH = "./src"
+PROJECT_NAME = "{{ config_root | basename }}"
+_.python.venv = { path = ".venv", create = true, uv_create_args = [
+    "--system-site-packages",
+] }
+UV_PROJECT_ENVIRONMENT = ".venv"
+
+[settings]
+python.uv_venv_auto = "create|source"
+
+[tasks.bootstrap]
+description = "Install dependencies"
+run = [
+    "uv pip install -r requirements.txt"
+]
+
+[tasks.info]
+description = "Print project information"
+run = '''
+echo "Project: $PROJECT_NAME"
+echo "Virtual Environment: $VIRTUAL_ENV"
+'''
+
+[tasks.lint]
+description = "Lint and check formatting with Ruff"
+run = "ruff check . && ruff format --check ."
+depends = ["bootstrap"]
+
+[tasks.format]
+description = "Format and fix code with Ruff"
+run = "ruff format . && ruff check --fix ."
+depends = ["bootstrap"]
+
+[tasks.docker-build]
+description = "Build the Docker image"
+run = "docker build -t gryphus-lab/spark-poc-project ."
+
+[tasks.docker-compose-up]
+description = "Run docker-compose up using the Dockerfile"
+run = "docker compose up --build -d"
+
+[tasks.docker-compose-down]
+description = "Run docker-compose down using the Dockerfile and clean up resources"
+run = "docker compose down --volumes --remove-orphans --rmi all"
