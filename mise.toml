@@ -1,8 +1,6 @@
 [tools]
-# Ensure Java is installed as Spark requires it
 java = "openjdk-25"
 python = "3.14"
-# Optional: version of Spark used for local development/testing
 spark = "3.5.0"
 uv = "latest"
 ruff = "latest"

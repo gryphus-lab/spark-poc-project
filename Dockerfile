@@ -8,7 +8,8 @@ USER root
 
 RUN mkdir -p /root/.ivy2 && \
     if [ -s requirements-runtime.txt ]; then pip install --no-cache-dir -r requirements-runtime.txt; fi && \
-    /opt/spark/bin/spark-shell --packages org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262 -i /dev/null && \
+    /opt/spark/bin/spark-shell \
+      --packages org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262 -i /dev/null && \
     cp /root/.ivy2/jars/* /opt/spark/jars/ && \
     rm -rf /root/.ivy2
 

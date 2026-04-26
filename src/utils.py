@@ -4,10 +4,10 @@ from pyspark.sql import SparkSession
 def get_spark_session(app_name="IcebergDataLake"):
     """
     Create a SparkSession configured for Apache Iceberg, a REST-backed `local` catalog, and S3A (MinIO) access.
-    
+
     Parameters:
         app_name (str): Application name to set for the Spark session. Defaults to "IcebergDataLake".
-    
+
     Returns:
         SparkSession: A SparkSession configured with Iceberg Spark extensions, a `local` REST catalog pointing at http://catalog:8181, and S3A/MinIO endpoint and credentials.
     """
