@@ -1,4 +1,6 @@
 from src.transformations import clean_text_data
+from src.utils import get_spark_session
+from pyspark.sql import SparkSession
 
 
 def test_clean_text_data(spark):
@@ -18,3 +20,11 @@ def test_clean_text_data(spark):
     assert "APACHE SPARK" not in results
     assert "PySpark" not in results
     assert "Docker" not in results
+
+
+def test_get_spark_session():
+    # Act: Call the function
+    session = get_spark_session()
+
+    # Assert: Check that it returns a SparkSession
+    assert isinstance(session, SparkSession)
