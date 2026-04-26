@@ -9,12 +9,12 @@ ruff = "latest"
 
 [env]
 # Point Spark to the Java path managed by mise
-JAVA_HOME = "{{config_root}}/installs/java/openjdk-25"
+JAVA_HOME = "~/.local/share/mise/installs/java/openjdk-25"
 # Add your src folder to PYTHONPATH so imports work locally
 PYTHONPATH = "./src"
 PROJECT_NAME = "{{ config_root | basename }}"
 _.python.venv = { path = ".venv", create = true, uv_create_args = [
-    "--system-site-packages",
+  "--system-site-packages",
 ] }
 UV_PROJECT_ENVIRONMENT = ".venv"
 
@@ -23,9 +23,7 @@ python.uv_venv_auto = "create|source"
 
 [tasks.bootstrap]
 description = "Install dependencies"
-run = [
-    "uv pip install -r requirements.txt"
-]
+run = ["uv pip install -r requirements.txt"]
 
 [tasks.info]
 description = "Print project information"
@@ -42,6 +40,16 @@ depends = ["bootstrap"]
 [tasks.format]
 description = "Format and fix code with Ruff"
 run = "ruff format . && ruff check --fix ."
+depends = ["bootstrap"]
+
+[tasks.test]
+description = "Run tests with pytest"
+run = "pytest tests"
+depends = ["bootstrap"]
+
+[tasks.coverage]
+description = "Run tests with coverage report"
+run = "pytest tests --cov=src --cov-report=term-missing --cov-report=xml:coverage.xml"
 depends = ["bootstrap"]
 
 [tasks.docker-build]
