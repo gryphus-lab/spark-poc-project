@@ -16,7 +16,9 @@ EXPECTED_SCHEMA = StructType(
 )
 
 
-def upsert_to_silver(spark, df, table_name, partition_spec=None, table_schema=None, merge_key="id"):
+def upsert_to_silver(
+    spark, df, table_name, partition_spec=None, table_schema=None, merge_key="id"
+):
     """
     Upserts (Merges) data into an Iceberg Silver table.
 
@@ -38,7 +40,9 @@ def upsert_to_silver(spark, df, table_name, partition_spec=None, table_schema=No
         # Build schema from DataFrame columns
         schema_fields = []
         for field in df.schema.fields:
-            schema_fields.append(f"`{field.name.replace('`', '')}` {field.dataType.simpleString()}")
+            schema_fields.append(
+                f"`{field.name.replace('`', '')}` {field.dataType.simpleString()}"
+            )
         schema_ddl = ", ".join(schema_fields)
     else:
         schema_ddl = table_schema
@@ -62,11 +66,15 @@ def upsert_to_silver(spark, df, table_name, partition_spec=None, table_schema=No
     # Validate merge_key exists in columns
     merge_key_escaped = f"`{merge_key.replace('`', '')}`"
     if merge_key_escaped not in columns:
-        raise ValueError(f"Merge key '{merge_key}' not found in DataFrame columns: {df.columns}")
+        raise ValueError(
+            f"Merge key '{merge_key}' not found in DataFrame columns: {df.columns}"
+        )
 
     insert_cols = ", ".join(columns)
     insert_values = ", ".join([f"s.{col}" for col in columns])
-    update_set = ", ".join([f"t.{col} = s.{col}" for col in columns if col != merge_key_escaped])
+    update_set = ", ".join(
+        [f"t.{col} = s.{col}" for col in columns if col != merge_key_escaped]
+    )
 
     # Perform the Merge logic with explicit column lists
     spark.sql(f"""

@@ -111,7 +111,9 @@ def test_upsert_to_silver_insert_only(spark):
 
     # Create new data
     new_data = [(1, "Alice", "Active"), (2, "Bob", "Inactive")]
-    df = spark.createDataFrame(new_data, ["id", "name", "status"]).withColumn("updated_at", current_timestamp())
+    df = spark.createDataFrame(new_data, ["id", "name", "status"]).withColumn(
+        "updated_at", current_timestamp()
+    )
 
     # Use a temporary table name for testing
     table_name = "local.db.test_silver_table_insert"

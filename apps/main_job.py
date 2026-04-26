@@ -64,7 +64,7 @@ def main():
                     # New column detected - add it
                     spark.sql(f"""
                         ALTER TABLE local.db.silver_users
-                        ADD COLUMN `{field_name.replace('`', '')}` {field.dataType.simpleString()}
+                        ADD COLUMN `{field_name.replace("`", "")}` {field.dataType.simpleString()}
                     """)
                 elif existing_fields[field_name].dataType != field.dataType:
                     # Type change detected - fail fast
