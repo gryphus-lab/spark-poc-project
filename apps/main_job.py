@@ -23,29 +23,50 @@ def main():
     """
     spark = get_spark_session()
 
-    # 1. BRONZE: Raw Ingestion (Append-only)
-    raw_df = spark.read.schema(EXPECTED_SCHEMA).csv(
-        "/opt/spark/project/data/input/sample.csv"
-    )
-    raw_df.writeTo("local.db.bronze_events").append()
+    try:
+        # Create namespace if not exists
+        spark.sql("CREATE NAMESPACE IF NOT EXISTS local.db")
 
-    # 2. SILVER: Cleaned & Validated (Merge/Upsert)
-    cleaned_df = clean_text_data(raw_df, "name")
-    cleaned_df.createOrReplaceTempView("updates")
+        # 1. BRONZE: Raw Ingestion (Append-only)
+        raw_df = spark.read.schema(EXPECTED_SCHEMA).csv(
+            "/opt/spark/project/data/input/sample.csv"
+        )
 
-    # Iceberg supports SQL Merge (upsert logic)
-    spark.sql("""
-        MERGE INTO local.db.silver_users t
-        USING updates s ON t.id = s.id
-        WHEN MATCHED THEN UPDATE SET *
-        WHEN NOT MATCHED THEN INSERT *
-    """)
+        # Create bronze_events table if not exists
+        spark.sql(f"""
+            CREATE TABLE IF NOT EXISTS local.db.bronze_events (
+                {", ".join([f"{field.name} {field.dataType.simpleString()}" for field in EXPECTED_SCHEMA.fields])}
+            ) USING iceberg
+        """)
 
-    # 3. GOLD: Aggregated for BI
-    gold_df = spark.sql(
-        "SELECT status, count(*) FROM local.db.silver_users GROUP BY status"
-    )
-    gold_df.writeTo("local.db.gold_user_stats").createOrReplace()
+        raw_df.writeTo("local.db.bronze_events").append()
+
+        # 2. SILVER: Cleaned & Validated (Merge/Upsert)
+        cleaned_df = clean_text_data(raw_df, "name")
+        cleaned_df.createOrReplaceTempView("updates")
+
+        # Create silver_users table if not exists
+        spark.sql(f"""
+            CREATE TABLE IF NOT EXISTS local.db.silver_users (
+                {", ".join([f"{field.name} {field.dataType.simpleString()}" for field in cleaned_df.schema.fields])}
+            ) USING iceberg
+        """)
+
+        # Iceberg supports SQL Merge (upsert logic)
+        spark.sql("""
+            MERGE INTO local.db.silver_users t
+            USING updates s ON t.id = s.id
+            WHEN MATCHED THEN UPDATE SET *
+            WHEN NOT MATCHED THEN INSERT *
+        """)
+
+        # 3. GOLD: Aggregated for BI
+        gold_df = spark.sql(
+            "SELECT status, count(*) AS user_count FROM local.db.silver_users GROUP BY status"
+        )
+        gold_df.writeTo("local.db.gold_user_stats").createOrReplace()
+    finally:
+        spark.stop()
 
 
 if __name__ == "__main__":
