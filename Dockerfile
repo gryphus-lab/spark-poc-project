@@ -25,15 +25,20 @@ FROM apache/spark:3.5.0
 
 WORKDIR /opt/spark/project
 
-# Copy pre-downloaded jars and dependencies from builder
+# Copy pre-downloaded jars from builder
 COPY --from=builder /opt/spark/jars /opt/spark/jars
-COPY --from=builder /usr/local/lib/python*/dist-packages /usr/local/lib/python*/dist-packages
+
+# Copy runtime requirements and install in final image
+COPY requirements-runtime.txt .
 
 # Copy application code
 COPY . .
 
 USER root
-RUN chown -R 185:185 /opt/spark/project
+RUN if [ -s requirements-runtime.txt ]; then \
+      pip install --no-cache-dir -r requirements-runtime.txt; \
+    fi && \
+    chown -R 185:185 /opt/spark/project
 
 # Runtime environment
 ENV PYTHONPATH="/opt/spark/python:/opt/spark/project/src"

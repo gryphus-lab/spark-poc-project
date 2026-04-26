@@ -4,6 +4,7 @@ import os
 # Ensure src is in the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from pyspark.sql.functions import current_timestamp
 from src.utils import get_spark_session
 from src.transformations import clean_text_data, EXPECTED_SCHEMA
 
@@ -35,7 +36,7 @@ def main():
         # Create bronze_events table if not exists
         spark.sql(f"""
             CREATE TABLE IF NOT EXISTS local.db.bronze_events (
-                {", ".join([f"{field.name} {field.dataType.simpleString()}" for field in EXPECTED_SCHEMA.fields])}
+                {", ".join([f"`{field.name.replace('`', '')}` {field.dataType.simpleString()}" for field in EXPECTED_SCHEMA.fields])}
             ) USING iceberg
         """)
 
@@ -43,16 +44,11 @@ def main():
 
         # 2. SILVER: Cleaned & Validated (Merge/Upsert)
         cleaned_df = clean_text_data(raw_df, "name")
+        # Add updated_at column to match canonical silver_users schema
+        cleaned_df = cleaned_df.withColumn("updated_at", current_timestamp())
         cleaned_df.createOrReplaceTempView("updates")
 
-        # Create silver_users table if not exists
-        spark.sql(f"""
-            CREATE TABLE IF NOT EXISTS local.db.silver_users (
-                {", ".join([f"{field.name} {field.dataType.simpleString()}" for field in cleaned_df.schema.fields])}
-            ) USING iceberg
-        """)
-
-        # Schema evolution: detect and apply changes before MERGE
+        # Schema evolution: detect and apply changes before CREATE TABLE
         table_exists = spark.catalog.tableExists("local.db.silver_users")
         if table_exists:
             existing_table = spark.table("local.db.silver_users")
@@ -68,7 +64,7 @@ def main():
                     # New column detected - add it
                     spark.sql(f"""
                         ALTER TABLE local.db.silver_users
-                        ADD COLUMN {field_name} {field.dataType.simpleString()}
+                        ADD COLUMN `{field_name.replace('`', '')}` {field.dataType.simpleString()}
                     """)
                 elif existing_fields[field_name].dataType != field.dataType:
                     # Type change detected - fail fast
@@ -77,6 +73,17 @@ def main():
                         f"existing type {existing_fields[field_name].dataType} "
                         f"cannot be changed to {field.dataType}"
                     )
+
+        # Create silver_users table if not exists
+        spark.sql("""
+            CREATE TABLE IF NOT EXISTS local.db.silver_users (
+                id INT,
+                name STRING,
+                status STRING,
+                updated_at TIMESTAMP
+            ) USING iceberg
+            PARTITIONED BY (status)
+        """)
 
         # Iceberg supports SQL Merge (upsert logic)
         spark.sql("""
