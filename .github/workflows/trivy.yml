@@ -31,12 +31,12 @@ jobs:
 
       - name: Build an image from Dockerfile
         run: |
-          docker build -t gryphus-lab/cvbuilder:${{ github.sha }} .
+          docker build -t gryphus-lab/spark-poc-project:${{ github.sha }} .
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
-          image-ref: 'gryphus-lab/cvbuilder:${{ github.sha }}'
+          image-ref: 'gryphus-lab/spark-poc-project:${{ github.sha }}'
           format: 'template'
           template: '@/contrib/sarif.tpl'
           output: 'trivy-results.sarif'

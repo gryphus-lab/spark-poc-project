@@ -16,3 +16,5 @@ def test_clean_text_data(spark):
     assert "pyspark" in results
     assert "docker" in results
     assert "APACHE SPARK" not in results
+    assert "PySpark" not in results
+    assert "Docker" not in results
