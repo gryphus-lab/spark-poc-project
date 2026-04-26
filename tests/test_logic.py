@@ -1,5 +1,5 @@
-import pytest
 from src.transformations import clean_text_data
+
 
 def test_clean_text_data(spark):
     # 1. Arrange: Create a sample DataFrame
