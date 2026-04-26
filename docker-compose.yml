@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   spark-master:
     image: apache/spark:latest
@@ -28,7 +27,7 @@ services:
       - SPARK_MASTER=spark://spark-master:7077
 
   minio:
-    image: minio/minio:RELEASE.2024-01-16T16-07-38Z
+    image: minio/minio:latest
     container_name: minio
     ports:
       - "9000:9000"
@@ -46,7 +45,7 @@ services:
       retries: 5
 
   minio-setup:
-    image: minio/mc:RELEASE.2024-01-16T16-25-21Z
+    image: minio/mc:latest
     depends_on:
       minio:
         condition: service_healthy
