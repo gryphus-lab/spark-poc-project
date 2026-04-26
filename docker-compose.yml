@@ -58,7 +58,7 @@ services:
       "
 
   catalog:
-    image: tabulario/iceberg-rest
+    image: tabulario/iceberg-rest:0.10.0
     ports: ["8181:8181"]
     environment:
       - CATALOG_WAREHOUSE=s3a://warehouse/

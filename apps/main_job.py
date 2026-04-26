@@ -11,12 +11,12 @@ from src.transformations import clean_text_data, EXPECTED_SCHEMA
 def main():
     """
     Run the ETL pipeline that ingests raw CSV data, cleans and upserts user records, and writes aggregated user statistics.
-    
+
     Performs three stages:
     - Bronze: reads input CSV and appends raw rows to the Iceberg table `local.db.bronze_events`.
     - Silver: cleans the `name` field, exposes cleaned rows as a temporary view `updates`, and merges (upserts) into `local.db.silver_users` keyed by `id`.
     - Gold: aggregates user counts by `status` from `local.db.silver_users` and replaces the contents of `local.db.gold_user_stats`.
-    
+
     Side effects:
     - Reads from "/opt/spark/project/data/input/sample.csv".
     - Writes/appends to Iceberg tables: `local.db.bronze_events`, `local.db.silver_users`, and `local.db.gold_user_stats`.
@@ -51,6 +51,32 @@ def main():
                 {", ".join([f"{field.name} {field.dataType.simpleString()}" for field in cleaned_df.schema.fields])}
             ) USING iceberg
         """)
+
+        # Schema evolution: detect and apply changes before MERGE
+        table_exists = spark.catalog.tableExists("local.db.silver_users")
+        if table_exists:
+            existing_table = spark.table("local.db.silver_users")
+            existing_schema = existing_table.schema
+            new_schema = cleaned_df.schema
+
+            # Check for new or modified fields
+            existing_fields = {field.name: field for field in existing_schema.fields}
+            new_fields = {field.name: field for field in new_schema.fields}
+
+            for field_name, field in new_fields.items():
+                if field_name not in existing_fields:
+                    # New column detected - add it
+                    spark.sql(f"""
+                        ALTER TABLE local.db.silver_users
+                        ADD COLUMN {field_name} {field.dataType.simpleString()}
+                    """)
+                elif existing_fields[field_name].dataType != field.dataType:
+                    # Type change detected - fail fast
+                    raise ValueError(
+                        f"Incompatible schema change for column '{field_name}': "
+                        f"existing type {existing_fields[field_name].dataType} "
+                        f"cannot be changed to {field.dataType}"
+                    )
 
         # Iceberg supports SQL Merge (upsert logic)
         spark.sql("""

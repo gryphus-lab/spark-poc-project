@@ -9,9 +9,10 @@ USER root
 RUN mkdir -p /tmp/ivy && \
     if [ -s requirements-runtime.txt ]; then pip install --no-cache-dir -r requirements-runtime.txt; fi && \
     /opt/spark/bin/spark-submit \
-      --packages org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0,org.apache.iceberg:iceberg-aws-bundle:1.5.0 \
+      --packages org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1 \
       --conf spark.jars.ivy=/tmp/ivy \
-      --class org.apache.spark.deploy.SparkSubmit /dev/null 2>&1 || true && \
+      --class org.apache.spark.deploy.SparkSubmit /dev/null 2>&1 && \
+    test -d /tmp/ivy/jars && \
     cp /tmp/ivy/jars/* /opt/spark/jars/ && \
     rm -rf /tmp/ivy
 
