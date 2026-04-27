@@ -1,12 +1,12 @@
 [tools]
-java = "openjdk-17"
+java = "temurin-17"
 python = "3.11"
 uv = "latest"
 ruff = "latest"
 
 [env]
 # Point Spark to the Java path managed by mise
-JAVA_HOME = "~/.local/share/mise/installs/java/openjdk-17"
+JAVA_HOME = "~/.local/share/mise/installs/java/temurin-17"
 # Add your src folder to PYTHONPATH so imports work locally
 PYTHONPATH = "./src"
 PROJECT_NAME = "{{ config_root | basename }}"

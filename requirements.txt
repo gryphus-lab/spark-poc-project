@@ -1,7 +1,12 @@
 # Core Spark Processing
-pyspark>=3.5.0
+pyspark==3.5.0
 
 # Development & Testing
+pandas>=2.0.0
+numpy>=1.21
+pyarrow>=11.0.0
+
+# Data Quality & Testing
 pytest>=7.0.0
 pytest-cov>=7.1.0
 ruff>=0.15.11

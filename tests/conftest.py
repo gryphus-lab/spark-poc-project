@@ -13,7 +13,7 @@ def spark():
 
     # 2. Setup Environment (Ensure Java 17 and a supported Python are used)
     os.environ["JAVA_HOME"] = os.path.expanduser(
-        "~/.local/share/mise/installs/java/openjdk-17"
+        "~/.local/share/mise/installs/java/temurin-17"
     )
 
     warehouse_dir = tempfile.mkdtemp(prefix="iceberg_warehouse_")
