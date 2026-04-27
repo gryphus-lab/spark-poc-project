@@ -61,14 +61,18 @@ def main(session=None, csv_path="/opt/spark/project/data/input/sample.csv"):
 
         # Deduplicate the source before merge to avoid ambiguous merge-key duplicates
         # Keep the latest row per id (using monotonically_increasing_id as tie-breaker)
-        window_spec = Window.partitionBy("id").orderBy(desc(monotonically_increasing_id()))
+        window_spec = Window.partitionBy("id").orderBy(
+            desc(monotonically_increasing_id())
+        )
         deduped_updates = (
             cleaned_df.withColumn("rn", row_number().over(window_spec))
             .filter("rn = 1")
             .drop("rn")
         )
         # Use upsert_to_silver helper to handle table creation and merge
-        upsert_to_silver(spark, deduped_updates, "local.db.silver_users", partition_spec="status")
+        upsert_to_silver(
+            spark, deduped_updates, "local.db.silver_users", partition_spec="status"
+        )
 
         # 3. GOLD: Aggregated for BI
         gold_df = spark.sql(

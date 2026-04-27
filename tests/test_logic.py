@@ -3,6 +3,7 @@ from src.utils import get_spark_session
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StringType, StructField, StructType, IntegerType
 
+
 def test_clean_text_data(spark):
     # 1. Arrange: Create a sample DataFrame
     input_data = [("APACHE SPARK",), ("PySpark",), ("Docker",)]
