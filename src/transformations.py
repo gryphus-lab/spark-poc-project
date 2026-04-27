@@ -37,13 +37,13 @@ def upsert_to_silver(
 
     # Use provided schema or derive from DataFrame
     if table_schema is None:
-        # Build schema from DataFrame columns
-        schema_fields = []
-        for field in df.schema.fields:
-            schema_fields.append(
+        # Build schema from DataFrame columns using list comprehension
+        schema_ddl = ", ".join(
+            [
                 f"`{field.name.replace('`', '')}` {field.dataType.simpleString()}"
-            )
-        schema_ddl = ", ".join(schema_fields)
+                for field in df.schema.fields
+            ]
+        )
     else:
         schema_ddl = table_schema
 
@@ -51,6 +51,39 @@ def upsert_to_silver(
     partition_clause = ""
     if partition_spec:
         partition_clause = f"PARTITIONED BY ({partition_spec})"
+
+    # Check if table already exists and validate partitioning
+    table_exists = spark.catalog.tableExists(table_name)
+    if table_exists and partition_spec:
+        # Fetch existing table metadata to check partitioning
+        describe_df = spark.sql(f"DESCRIBE EXTENDED {table_name}")
+        describe_rows = describe_df.collect()
+
+        # Parse partition information from DESCRIBE EXTENDED output
+        existing_partitions = []
+        in_partition_section = False
+        for row in describe_rows:
+            col_name = row["col_name"].strip() if row["col_name"] else ""
+            if col_name == "# Partition Information":
+                in_partition_section = True
+                continue
+            if in_partition_section and col_name and not col_name.startswith("#"):
+                existing_partitions.append(col_name)
+            if col_name.startswith("# Metadata Information") or col_name.startswith(
+                "# Detailed Table"
+            ):
+                break
+
+        # Compare requested partition_spec with existing partitions
+        requested_partitions = [p.strip() for p in partition_spec.split(",")]
+        if existing_partitions and set(existing_partitions) != set(
+            requested_partitions
+        ):
+            raise ValueError(
+                f"Table {table_name} already exists with different partitioning. "
+                f"Existing partitions: {existing_partitions}, "
+                f"Requested partitions: {requested_partitions}"
+            )
 
     # Ensure the target table exists (Bronze-to-Silver initialization)
     spark.sql(f"""

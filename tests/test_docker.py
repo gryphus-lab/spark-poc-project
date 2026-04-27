@@ -31,7 +31,9 @@ def test_dockerfile_exists_and_contains_required_stages():
 
 
 def test_docker_compose_file_has_expected_services():
-    assert DOCKER_COMPOSE.exists(), "docker-compose.yml must exist in the repository root"
+    assert DOCKER_COMPOSE.exists(), (
+        "docker-compose.yml must exist in the repository root"
+    )
     content = DOCKER_COMPOSE.read_text()
 
     assert "services:" in content

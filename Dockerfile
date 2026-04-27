@@ -11,13 +11,14 @@ RUN mkdir -p /tmp/ivy && \
     if [ -s requirements-runtime.txt ]; then \
       pip install --no-cache-dir -r requirements-runtime.txt; \
     fi && \
-    /opt/spark/bin/spark-shell \
+    echo "pass" > /tmp/noop.py && \
+    /opt/spark/bin/spark-submit \
       --packages org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1 \
       --conf spark.jars.ivy=/tmp/ivy \
-      -c 'exit(0)' 2>&1 || true && \
-    if [ -d /tmp/ivy/jars ]; then \
-      cp /tmp/ivy/jars/* /opt/spark/jars/ || true; \
-    fi && \
+      /tmp/noop.py && \
+    test -d /tmp/ivy/jars && \
+    test -n "$(ls -A /tmp/ivy/jars)" && \
+    cp /tmp/ivy/jars/* /opt/spark/jars/ && \
     rm -rf /tmp/ivy
 
 # Final stage: minimal runtime image

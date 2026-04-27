@@ -1,5 +1,6 @@
 import pytest
 from py4j.protocol import Py4JJavaError
+from pyspark.sql.utils import AnalysisException
 
 from apps import main_job
 from src.transformations import EXPECTED_SCHEMA, upsert_to_silver
@@ -8,7 +9,7 @@ from src.transformations import EXPECTED_SCHEMA, upsert_to_silver
 def _ensure_iceberg_available(spark):
     try:
         spark.sql("CREATE NAMESPACE IF NOT EXISTS local.db")
-    except Py4JJavaError:
+    except (Py4JJavaError, AnalysisException):
         pytest.skip("Iceberg catalog is not available in this environment")
 
 
@@ -23,7 +24,10 @@ def test_upsert_to_silver_merges_inserts_and_updates(spark):
         upsert_to_silver(spark, initial_df, table_name, partition_spec="status")
 
         assert spark.catalog.tableExists(table_name)
-        rows = {row["id"]: (row["name"], row["status"]) for row in spark.table(table_name).collect()}
+        rows = {
+            row["id"]: (row["name"], row["status"])
+            for row in spark.table(table_name).collect()
+        }
         assert rows[1] == ("Alice", "Active")
         assert rows[2] == ("Bob", "Inactive")
 
@@ -32,7 +36,10 @@ def test_upsert_to_silver_merges_inserts_and_updates(spark):
         updated_df = spark.createDataFrame(updated_rows, EXPECTED_SCHEMA)
         upsert_to_silver(spark, updated_df, table_name, partition_spec="status")
 
-        final_rows = {row["id"]: (row["name"], row["status"]) for row in spark.table(table_name).collect()}
+        final_rows = {
+            row["id"]: (row["name"], row["status"])
+            for row in spark.table(table_name).collect()
+        }
         assert len(final_rows) == 3
         assert final_rows[1] == ("Alice Updated", "Active")
         assert final_rows[3] == ("Carol", "Active")
@@ -49,12 +56,16 @@ def test_main_job_etl_flow_creates_iceberg_tables_and_aggregates(spark, monkeypa
     ]
     sample_df = spark.createDataFrame(sample_rows, EXPECTED_SCHEMA)
 
-    # Return the pytest SparkSession and override the CSV read to use sample data.
-    monkeypatch.setattr(main_job, "get_spark_session", lambda: spark)
-    monkeypatch.setattr(spark.read, "csv", lambda path: sample_df)
+    # Monkeypatch the DataFrameReader.csv method at the class level
+    import pyspark.sql
+
+    monkeypatch.setattr(
+        pyspark.sql.DataFrameReader, "csv", lambda self, path: sample_df
+    )
 
     try:
-        main_job.main()
+        # Pass the session to main_job.main() to avoid it being stopped
+        main_job.main(session=spark)
 
         assert spark.catalog.tableExists("local.db.bronze_events")
         assert spark.catalog.tableExists("local.db.silver_users")
