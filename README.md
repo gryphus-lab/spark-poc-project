@@ -13,8 +13,8 @@ A small PySpark proof-of-concept project demonstrating text transformation logic
 
 ## Prerequisites
 
-- Python 3.14
-- Java (OpenJDK 25)
+- Python 3.11
+- Java (OpenJDK 17)
 - `mise` for managing the local environment
 
 ## Setup

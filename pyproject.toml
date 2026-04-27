@@ -6,19 +6,15 @@ authors = [
     { name = "Your Name", email = "you@example.com" }
 ]
 dependencies = [
-    "pyspark>=3.5.0",
+    "pyspark==3.5.0",
 ]
-requires-python = ">=3.11"
+requires-python = "==3.11"
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0.0",
+    "pytest",
     "ruff>=0.15.11",
 ]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
 
 [build-system]
 requires = ["setuptools>=61.0"]

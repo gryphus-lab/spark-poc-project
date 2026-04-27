@@ -16,6 +16,8 @@ results/
 .coverage.*
 coverage.xml
 htmlcov/
+*.iml
+*.log
 
 **/*.pdf
 **/*.png
