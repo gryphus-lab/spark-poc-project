@@ -5,7 +5,9 @@ from src.transformations import EXPECTED_SCHEMA
 
 def assert_schema_equal(actual_schema, expected_schema):
     """Custom schema equality check to avoid pyspark.testing import issues."""
-    assert actual_schema.fields == expected_schema.fields, f"Schemas do not match: {actual_schema} != {expected_schema}"
+    assert actual_schema.fields == expected_schema.fields, (
+        f"Schemas do not match: {actual_schema} != {expected_schema}"
+    )
 
 
 def test_schema_integrity(spark):

@@ -27,7 +27,7 @@ def test_dockerfile_exists_and_contains_required_stages():
     assert "COPY ./src src" in content
     assert "COPY ./apps apps" in content
     assert "USER 185" in content
-    assert "ENV PYTHONPATH=" in content
+    assert 'ENV PYTHONPATH="/opt/spark/python:/opt/spark/project/src"' in content
     assert "pip install --no-cache-dir -r requirements-runtime.txt" in content
 
 
@@ -47,7 +47,7 @@ def test_docker_compose_file_has_expected_services():
         )
 
     assert "spark://spark-master:7077" in content
-    assert "minio:9000" in content or "9000:9000" in content
+    assert "minio:9000" in content
     assert "condition: service_healthy" in content
 
 
