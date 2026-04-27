@@ -1,12 +1,12 @@
 # Core Spark Processing
 pyspark==3.5.0
 
-# Development & Testing
+# Data
 pandas>=2.0.0
-numpy>=1.21,<2.0
+numpy>=1.21,<2.0  # <2.0 required for PySpark 3.5 compatibility (NumPy 2.x removed APIs/semantics used by PySpark, e.g., np.NaN and pandas UDF dtype behavior)
 pyarrow>=11.0.0
 
-# Data Quality & Testing
+# Development & Testing
 pytest>=7.0.0
 pytest-cov>=7.1.0
 ruff>=0.15.11

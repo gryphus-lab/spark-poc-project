@@ -56,9 +56,18 @@ def test_upsert_to_silver_creates_correct_sql(mock_spark):
     )
 
     # Flatten all SQL calls to verify fragments (ignores whitespace/newlines)
-    all_sql_executed = " ".join(
-        [call.args[0] for call in mock_spark.sql.call_args_list]
-    )
+    # Handle both positional and keyword arguments robustly
+    sql_fragments = []
+    for call in mock_spark.sql.call_args_list:
+        if call.args:
+            sql_fragments.append(call.args[0])
+        elif "sql" in call.kwargs:
+            sql_fragments.append(call.kwargs["sql"])
+        elif "sqlText" in call.kwargs:
+            sql_fragments.append(call.kwargs["sqlText"])
+        else:
+            sql_fragments.append("")
+    all_sql_executed = " ".join(sql_fragments)
 
     # Verify DDL
     assert "CREATE TABLE IF NOT EXISTS local.db.users" in all_sql_executed

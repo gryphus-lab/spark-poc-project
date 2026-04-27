@@ -92,8 +92,8 @@ docker compose down
 
 ### Spark and Iceberg Versions
 
-- **Spark**: 4.0.1
-- **Iceberg Spark Runtime**: `iceberg-spark-runtime-4.0_2.13:1.10.1`
+- **Spark**: 3.5.0
+- **Iceberg Spark Runtime**: `org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1`
 - **Iceberg AWS Bundle**: `iceberg-aws-bundle:1.10.1`
 - **Iceberg REST Catalog**: `tabulario/iceberg-rest:1.10.1`
 
