@@ -3,7 +3,7 @@ pyspark==3.5.0
 
 # Data
 pandas>=2.0.0
-numpy>=1.21,<2.0
+numpy>=2.4.4,<3.0
 
 # Development & Testing
 pytest>=9.0.3
