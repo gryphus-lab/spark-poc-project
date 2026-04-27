@@ -1,4 +1,4 @@
-FROM apache/spark:3.5.0 AS builder
+FROM apache/spark:4.1.1 AS builder
 
 WORKDIR /opt/spark/project
 
@@ -22,7 +22,7 @@ RUN mkdir -p /tmp/ivy && \
     rm -rf /tmp/ivy
 
 # Final stage: minimal runtime image
-FROM apache/spark:3.5.0
+FROM apache/spark:4.1.1
 
 WORKDIR /opt/spark/project
 
