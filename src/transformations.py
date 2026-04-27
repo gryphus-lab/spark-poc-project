@@ -19,18 +19,7 @@ def clean_text_data(df, column_name):
 def _get_existing_partitions(spark, table_name):
     """Helper to parse Iceberg partition columns from table metadata."""
     try:
-        # Try to get partition information from Iceberg table properties
-        table_details = spark.sql(f"SHOW TBLPROPERTIES {table_name}").collect()
-        for row in table_details:
-            if row["key"] == "partition":
-                # Parse partition spec like "status"
-                partition_spec = row["value"]
-                if partition_spec:
-                    # Remove brackets and split by comma
-                    return [p.strip() for p in partition_spec.strip("()").split(",")]
-        return []
-    except:
-        # Fallback to DESCRIBE EXTENDED parsing
+        # Parse partition information from DESCRIBE EXTENDED
         rows = spark.sql(f"DESCRIBE EXTENDED {table_name}").collect()
         partitions = []
         in_section = False
@@ -46,6 +35,9 @@ def _get_existing_partitions(spark, table_name):
                 if col:
                     partitions.append(col)
         return partitions
+    except Exception:
+        # Return empty list if table doesn't exist or metadata can't be read
+        return []
 
 
 def _generate_schema_ddl(df):
