@@ -46,16 +46,14 @@ def _ensure_iceberg_available(spark):
     namespace operation using the fully-qualified name.
     """
     try:
-        # Use the fully qualified name to trigger catalog discovery
+        # Trigger catalog load by referencing it directly in a DDL command
         spark.sql("CREATE NAMESPACE IF NOT EXISTS local.db")
-        # Set the current catalog/database so shorter table names work in tests
+        # Once created, we can switch safely
         spark.sql("USE local.db")
     except Exception as e:
-        # Get the actual Java stack trace if possible for better debugging
-        error_msg = getattr(e, "desc", str(e))
-        pytest.fail(
-            f"Iceberg Catalog 'local' could not be initialized. Error: {error_msg}"
-        )
+        # Catch and report the specific Java cause
+        error_detail = getattr(e, "desc", str(e))
+        pytest.fail(f"Iceberg Catalog Setup Failed: {error_detail}")
 
 
 def test_upsert_to_silver_merges_inserts_and_updates(spark):

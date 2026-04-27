@@ -1,6 +1,6 @@
 [tools]
 java = "openjdk-17"
-python = "3.14"
+python = "3.11"
 spark = "3.5.0"
 uv = "latest"
 ruff = "latest"
