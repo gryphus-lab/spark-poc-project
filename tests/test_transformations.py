@@ -11,7 +11,7 @@ def mock_spark():
     return spark
 
 
-def test_clean_text_data(spark):
+def test_clean_text_data_lowercases_via_spark_fixture(spark):
     # Use the 'spark' fixture from your conftest.py
     data = [("JOE",), ("Alice",)]
     df = spark.createDataFrame(data, ["name"])
