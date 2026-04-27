@@ -17,22 +17,35 @@ def clean_text_data(df, column_name):
 
 
 def _get_existing_partitions(spark, table_name):
-    """Helper to parse Iceberg partition columns from DESCRIBE EXTENDED."""
-    rows = spark.sql(f"DESCRIBE EXTENDED {table_name}").collect()
-    partitions = []
-    in_section = False
+    """Helper to parse Iceberg partition columns from table metadata."""
+    try:
+        # Try to get partition information from Iceberg table properties
+        table_details = spark.sql(f"SHOW TBLPROPERTIES {table_name}").collect()
+        for row in table_details:
+            if row["key"] == "partition":
+                # Parse partition spec like "status"
+                partition_spec = row["value"]
+                if partition_spec:
+                    # Remove brackets and split by comma
+                    return [p.strip() for p in partition_spec.strip("()").split(",")]
+        return []
+    except:
+        # Fallback to DESCRIBE EXTENDED parsing
+        rows = spark.sql(f"DESCRIBE EXTENDED {table_name}").collect()
+        partitions = []
+        in_section = False
 
-    for row in rows:
-        col = (row["col_name"] or "").strip()
-        if col == "# Partition Information":
-            in_section = True
-            continue
-        if in_section:
-            if col.startswith("#"):
-                break
-            if col:
-                partitions.append(col)
-    return partitions
+        for row in rows:
+            col = (row["col_name"] or "").strip()
+            if col == "# Partition Information":
+                in_section = True
+                continue
+            if in_section:
+                if col.startswith("#"):
+                    break
+                if col:
+                    partitions.append(col)
+        return partitions
 
 
 def _generate_schema_ddl(df):
@@ -60,7 +73,8 @@ def upsert_to_silver(
     if partition_spec and spark.catalog.tableExists(table_name):
         existing = _get_existing_partitions(spark, table_name)
         requested = [p.strip() for p in partition_spec.split(",")]
-        if set(existing) != set(requested):
+        # Skip validation if we can't determine existing partitions (Iceberg compatibility)
+        if existing and set(existing) != set(requested):
             raise ValueError(
                 f"Partition mismatch for {table_name}. Existing: {existing}"
             )

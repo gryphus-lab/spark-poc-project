@@ -69,6 +69,12 @@ def main(session=None, csv_path="/opt/spark/project/data/input/sample.csv"):
             .filter("rn = 1")
             .drop("rn")
         )
+        # Materialize the DataFrame to remove non-deterministic expressions
+        # Collect and recreate DataFrame to break lineage with window functions
+        deduped_updates = spark.createDataFrame(
+            deduped_updates.collect(), deduped_updates.schema
+        )
+
         # Use upsert_to_silver helper to handle table creation and merge
         upsert_to_silver(
             spark, deduped_updates, "local.db.silver_users", partition_spec="status"
