@@ -1,5 +1,9 @@
 # Core Spark Processing
-pyspark>=3.5.0
+pyspark==3.5.0
+
+# Data
+pandas>=2.0.0
+numpy>=1.21,<2.0
 
 # Development & Testing
 pytest>=7.0.0

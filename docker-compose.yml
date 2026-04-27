@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   spark-master:
     image: apache/spark:latest
@@ -26,3 +25,49 @@ services:
       - spark-master
     environment:
       - SPARK_MASTER=spark://spark-master:7077
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 admin password;
+      /usr/bin/mc mb myminio/warehouse || true;
+      exit 0;
+      "
+
+  catalog:
+    image: tabulario/iceberg-rest:1.10.1
+    ports: ["8181:8181"]
+    environment:
+      - CATALOG_WAREHOUSE=s3a://warehouse/
+      - CATALOG_IO__IMPL=org.apache.iceberg.aws.s3.S3FileIO
+      - CATALOG_S3_ENDPOINT=http://minio:9000
+      - CATALOG_S3_ACCESS__KEY__ID=admin
+      - CATALOG_S3_SECRET__ACCESS__KEY=password
+      - CATALOG_S3_PATH__STYLE__ACCESS=true
+      - CATALOG_AWS__REGION=us-east-1
+    depends_on: [minio-setup]
+
+volumes:
+  minio-data:

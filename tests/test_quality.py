@@ -1,7 +1,13 @@
-from pyspark.testing import assertSchemaEqual
 from pyspark.sql.functions import col
 from pyspark.sql.types import IntegerType, StringType
 from src.transformations import EXPECTED_SCHEMA
+
+
+def assert_schema_equal(actual_schema, expected_schema):
+    """Custom schema equality check to avoid pyspark.testing import issues."""
+    assert actual_schema.fields == expected_schema.fields, (
+        f"Schemas do not match: {actual_schema} != {expected_schema}"
+    )
 
 
 def test_schema_integrity(spark):
@@ -9,8 +15,8 @@ def test_schema_integrity(spark):
     # Simulate loading data
     df = spark.createDataFrame([(1, "Alice", "Active")], schema=EXPECTED_SCHEMA)
 
-    # assertSchemaEqual validates column names, types, and nullability
-    assertSchemaEqual(df.schema, EXPECTED_SCHEMA)
+    # assert_schema_equal validates column names, types, and nullability
+    assert_schema_equal(df.schema, EXPECTED_SCHEMA)
 
 
 def test_null_completeness(spark):
@@ -26,6 +32,7 @@ def test_null_completeness(spark):
 
 
 # --- EXPECTED_SCHEMA structure tests ---
+
 
 def test_expected_schema_field_count():
     """EXPECTED_SCHEMA must define exactly 3 fields."""
@@ -75,6 +82,7 @@ def test_expected_schema_status_nullable():
 
 
 # --- Data quality checks using EXPECTED_SCHEMA ---
+
 
 def test_null_name_allowed_by_schema(spark):
     """Rows with a null 'name' value are accepted by EXPECTED_SCHEMA (nullable=True)."""

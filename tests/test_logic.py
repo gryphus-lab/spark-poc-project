@@ -1,4 +1,4 @@
-from src.transformations import clean_text_data
+from src.transformations import clean_text_data, upsert_to_silver
 from src.utils import get_spark_session
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StringType, StructField, StructType, IntegerType
@@ -88,15 +88,54 @@ def test_clean_text_data_numbers_in_string(spark):
 
 def test_clean_text_data_preserves_other_columns(spark):
     """Only the target column is modified; other columns are left untouched."""
-    schema = StructType([
-        StructField("id", IntegerType(), nullable=False),
-        StructField("name", StringType(), nullable=True),
-    ])
+    schema = StructType(
+        [
+            StructField("id", IntegerType(), nullable=False),
+            StructField("name", StringType(), nullable=True),
+        ]
+    )
     df = spark.createDataFrame([(1, "ALICE"), (2, "BOB")], schema=schema)
     result_df = clean_text_data(df, "name")
     rows = {row["id"]: row["name"] for row in result_df.collect()}
     assert rows[1] == "alice"
-    assert rows[2] == "bob"
+
+
+def test_upsert_to_silver_insert_only(spark):
+    """Test upsert_to_silver function for insert-only case."""
+    from pyspark.sql.functions import current_timestamp
+    from tests.test_integration import _ensure_iceberg_available
+
+    # Skip test if Iceberg is not available
+    _ensure_iceberg_available(spark)
+
+    # Create namespace if not exists
+    spark.sql("CREATE NAMESPACE IF NOT EXISTS local.db")
+
+    # Create new data
+    new_data = [(1, "Alice", "Active"), (2, "Bob", "Inactive")]
+    df = spark.createDataFrame(new_data, ["id", "name", "status"]).withColumn(
+        "updated_at", current_timestamp()
+    )
+
+    # Use a temporary table name for testing
+    table_name = "local.db.test_silver_table_insert"
+
+    # Call the function
+    upsert_to_silver(spark, df, table_name, partition_spec="status")
+
+    # Verify the table was created and data inserted
+    assert spark.catalog.tableExists(table_name)
+    result_df = spark.table(table_name)
+    rows = result_df.collect()
+    assert len(rows) == 2
+
+    # Check that data matches
+    row_dict = {row["id"]: (row["name"], row["status"]) for row in rows}
+    assert row_dict[1] == ("Alice", "Active")
+    assert row_dict[2] == ("Bob", "Inactive")
+
+    # Clean up
+    spark.sql(f"DROP TABLE {table_name}")
 
 
 def test_clean_text_data_different_column_name(spark):

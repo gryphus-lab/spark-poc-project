@@ -1,25 +1,51 @@
 import pytest
 import os
+import tempfile
+import shutil
 from pyspark.sql import SparkSession
 
 
 @pytest.fixture(scope="session")
 def spark():
-    """
-    Provide a shared SparkSession to tests and stop it when the test session ends.
+    # 1. Kill any existing sessions
+    if SparkSession.getActiveSession():
+        SparkSession.getActiveSession().stop()
 
-    Returns:
-        pyspark.sql.SparkSession: A SparkSession configured with master "local[1]" and app name "pytest-pyspark-local"; the session is stopped during fixture teardown.
-    """
-    # Set JAVA_HOME to the correct path
+    # 2. Setup Environment (Ensure Java 17 and a supported Python are used)
     os.environ["JAVA_HOME"] = os.path.expanduser(
-        "~/.local/share/mise/installs/java/openjdk-25"
+        "~/.local/share/mise/installs/java/temurin-17"
     )
 
-    spark = (
+    warehouse_dir = tempfile.mkdtemp(prefix="iceberg_warehouse_")
+    # Absolute URI is mandatory for Hadoop catalogs on macOS/Linux
+    warehouse_uri = f"file://{os.path.abspath(warehouse_dir)}"
+
+    # 3. Spark 3.5 + Iceberg 1.10.1 Coordinates
+    ICEBERG_PKG = "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1"
+
+    builder = (
         SparkSession.builder.master("local[1]")
-        .appName("pytest-pyspark-local")
-        .getOrCreate()
+        .appName("pytest-iceberg")
+        .config("spark.jars.packages", ICEBERG_PKG)
+        .config(
+            "spark.sql.extensions",
+            "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+        )
+        .config("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog")
+        .config("spark.sql.catalog.local.type", "hadoop")
+        .config("spark.sql.catalog.local.warehouse", warehouse_uri)
+        # Fix Java 17 reflection for Spark internals
+        .config(
+            "spark.driver.extraJavaOptions",
+            "--add-opens=java.base/java.lang=ALL-UNNAMED "
+            "--add-opens=java.base/java.net=ALL-UNNAMED "
+            "--add-opens=java.base/java.io=ALL-UNNAMED "
+            "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED "
+            "-Dio.netty.tryReflectionSetAccessible=true",
+        )
     )
+
+    spark = builder.getOrCreate()
     yield spark
     spark.stop()
+    shutil.rmtree(warehouse_dir, ignore_errors=True)
