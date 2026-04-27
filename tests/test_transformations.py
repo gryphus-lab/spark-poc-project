@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from transformations import clean_text_data, upsert_to_silver
+from src.transformations import clean_text_data, upsert_to_silver
 
 
 @pytest.fixture

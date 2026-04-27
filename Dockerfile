@@ -33,7 +33,8 @@ COPY --from=builder /opt/spark/jars /opt/spark/jars
 COPY requirements-runtime.txt .
 
 # Copy application code
-COPY . .
+COPY ./src src
+COPY ./apps apps
 
 USER root
 RUN if [ -s requirements-runtime.txt ]; then \
