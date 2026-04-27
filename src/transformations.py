@@ -69,16 +69,12 @@ def upsert_to_silver(
                 continue
             if in_partition_section and col_name and not col_name.startswith("#"):
                 existing_partitions.append(col_name)
-            if col_name.startswith("# Metadata Information") or col_name.startswith(
-                "# Detailed Table"
-            ):
+            if col_name.startswith(("# Metadata Information", "# Detailed Table")):
                 break
 
         # Compare requested partition_spec with existing partitions
         requested_partitions = [p.strip() for p in partition_spec.split(",")]
-        if existing_partitions and set(existing_partitions) != set(
-            requested_partitions
-        ):
+        if set(existing_partitions) != set(requested_partitions):
             raise ValueError(
                 f"Table {table_name} already exists with different partitioning. "
                 f"Existing partitions: {existing_partitions}, "
@@ -109,13 +105,25 @@ def upsert_to_silver(
         [f"t.{col} = s.{col}" for col in columns if col != merge_key_escaped]
     )
 
+    # Build MERGE query, omitting UPDATE clause if no non-key columns exist
+    if update_set:
+        merge_sql = f"""
+            MERGE INTO {table_name} t
+            USING {temp_view} s
+            ON t.{merge_key_escaped} = s.{merge_key_escaped}
+            WHEN MATCHED THEN
+                UPDATE SET {update_set}
+            WHEN NOT MATCHED THEN
+                INSERT ({insert_cols}) VALUES ({insert_values})
+        """
+    else:
+        merge_sql = f"""
+            MERGE INTO {table_name} t
+            USING {temp_view} s
+            ON t.{merge_key_escaped} = s.{merge_key_escaped}
+            WHEN NOT MATCHED THEN
+                INSERT ({insert_cols}) VALUES ({insert_values})
+        """
+
     # Perform the Merge logic with explicit column lists
-    spark.sql(f"""
-        MERGE INTO {table_name} t
-        USING {temp_view} s
-        ON t.{merge_key_escaped} = s.{merge_key_escaped}
-        WHEN MATCHED THEN
-            UPDATE SET {update_set}
-        WHEN NOT MATCHED THEN
-            INSERT ({insert_cols}) VALUES ({insert_values})
-    """)
+    spark.sql(merge_sql)

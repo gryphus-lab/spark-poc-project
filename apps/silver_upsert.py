@@ -7,6 +7,9 @@ def main():
     spark = get_spark_session("Silver-Upsert-Job")
 
     try:
+        # Create namespace if not exists
+        spark.sql("CREATE NAMESPACE IF NOT EXISTS local.db")
+
         # 1. Read Raw (Bronze) Data from MinIO
         # In a real lake, you'd read from s3a://warehouse/bronze/
         raw_df = spark.read.schema(EXPECTED_SCHEMA).csv(

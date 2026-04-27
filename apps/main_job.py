@@ -8,10 +8,11 @@ from pyspark.sql.functions import (
     current_timestamp,
     row_number,
     monotonically_increasing_id,
+    desc,
 )
 from pyspark.sql.window import Window
 from src.utils import get_spark_session
-from src.transformations import clean_text_data, EXPECTED_SCHEMA
+from src.transformations import clean_text_data, EXPECTED_SCHEMA, upsert_to_silver
 
 
 def main(session=None, csv_path="/opt/spark/project/data/input/sample.csv"):
@@ -60,82 +61,14 @@ def main(session=None, csv_path="/opt/spark/project/data/input/sample.csv"):
 
         # Deduplicate the source before merge to avoid ambiguous merge-key duplicates
         # Keep the latest row per id (using monotonically_increasing_id as tie-breaker)
-        window_spec = Window.partitionBy("id").orderBy(monotonically_increasing_id())
+        window_spec = Window.partitionBy("id").orderBy(desc(monotonically_increasing_id()))
         deduped_updates = (
             cleaned_df.withColumn("rn", row_number().over(window_spec))
             .filter("rn = 1")
             .drop("rn")
         )
-        deduped_updates.createOrReplaceTempView("updates")
-
-        # Schema evolution: detect and apply changes before CREATE TABLE
-        table_exists = spark.catalog.tableExists("local.db.silver_users")
-        if table_exists:
-            existing_table = spark.table("local.db.silver_users")
-            existing_schema = existing_table.schema
-            new_schema = cleaned_df.schema
-
-            # Check for new or modified fields
-            existing_fields = {field.name: field for field in existing_schema.fields}
-            new_fields = {field.name: field for field in new_schema.fields}
-
-            # (1) Detect dropped columns
-            for field_name, existing_field in existing_fields.items():
-                if field_name not in new_fields:
-                    # Column removal detected - raise error
-                    raise ValueError(
-                        f"Column '{field_name}' exists in table but is missing from new schema. "
-                        f"Explicit column removal is not supported."
-                    )
-
-            # (2) Check for new or modified fields with proper type/nullability comparison
-            for field_name, field in new_fields.items():
-                if field_name not in existing_fields:
-                    # New column detected - add it
-                    spark.sql(f"""
-                        ALTER TABLE local.db.silver_users
-                        ADD COLUMN `{field_name.replace("`", "")}` {field.dataType.simpleString()}
-                    """)
-                else:
-                    existing_field = existing_fields[field_name]
-                    # Compare types using simpleString() instead of object equality
-                    if (
-                        existing_field.dataType.simpleString()
-                        != field.dataType.simpleString()
-                    ):
-                        # Type change detected - fail fast
-                        raise ValueError(
-                            f"Incompatible schema change for column '{field_name}': "
-                            f"existing type {existing_field.dataType.simpleString()} "
-                            f"cannot be changed to {field.dataType.simpleString()}"
-                        )
-                    # Check nullable differences
-                    if existing_field.nullable and not field.nullable:
-                        # Going from nullable to non-nullable requires explicit handling
-                        raise ValueError(
-                            f"Incompatible nullability change for column '{field_name}': "
-                            f"cannot change from nullable to non-nullable without explicit ALTER"
-                        )
-                    # Allow making a column more nullable (non-nullable -> nullable) silently
-
-        # Create silver_users table if not exists
-        spark.sql("""
-            CREATE TABLE IF NOT EXISTS local.db.silver_users (
-                id INT,
-                name STRING,
-                status STRING,
-                updated_at TIMESTAMP
-            ) USING iceberg
-            PARTITIONED BY (status)
-        """)
-
-        # Iceberg supports SQL Merge (upsert logic)
-        spark.sql("""
-            MERGE INTO local.db.silver_users t
-            USING updates s ON t.id = s.id
-            WHEN MATCHED THEN UPDATE SET *
-            WHEN NOT MATCHED THEN INSERT *
-        """)
+        # Use upsert_to_silver helper to handle table creation and merge
+        upsert_to_silver(spark, deduped_updates, "local.db.silver_users", partition_spec="status")
 
         # 3. GOLD: Aggregated for BI
         gold_df = spark.sql(

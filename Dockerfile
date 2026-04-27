@@ -39,11 +39,12 @@ USER root
 RUN if [ -s requirements-runtime.txt ]; then \
       pip install --no-cache-dir -r requirements-runtime.txt; \
     fi && \
-    chown -R 185:185 /opt/spark/project
+    chown -R 185:185 /opt/spark/project && \
+    chown -R 185:185 /opt/spark/jars && \
+    find /usr/local/lib -type d -name site-packages -exec chown -R 185:185 {} + 2>/dev/null || true
 
 # Runtime environment
 ENV PYTHONPATH="/opt/spark/python:/opt/spark/project/src"
-ENV SPARK_DIST_CLASSPATH="/opt/spark/jars/*"
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 

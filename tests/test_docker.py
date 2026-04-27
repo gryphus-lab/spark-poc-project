@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-DOCKERFILE = Path("Dockerfile")
-DOCKER_COMPOSE = Path("docker-compose.yml")
+DOCKERFILE = Path(__file__).resolve().parent.parent / "Dockerfile"
+DOCKER_COMPOSE = Path(__file__).resolve().parent.parent / "docker-compose.yml"
 EXPECTED_SERVICES = [
     "spark-master",
     "spark-worker",
@@ -57,10 +57,25 @@ def _docker_compose_command():
     if docker is None and docker_compose is None:
         return None
 
+    # Probe for docker compose v2 plugin
     if docker is not None:
-        return [docker, "compose", "-f", str(DOCKER_COMPOSE), "config"]
+        try:
+            result = subprocess.run(
+                [docker, "compose", "version"],
+                capture_output=True,
+                timeout=5,
+                check=False,
+            )
+            if result.returncode == 0:
+                return [docker, "compose", "-f", str(DOCKER_COMPOSE), "config"]
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
 
-    return [docker_compose, "-f", str(DOCKER_COMPOSE), "config"]
+    # Fall back to docker-compose binary if available
+    if docker_compose is not None:
+        return [docker_compose, "-f", str(DOCKER_COMPOSE), "config"]
+
+    return None
 
 
 @pytest.mark.skipif(
@@ -76,6 +91,7 @@ def test_docker_compose_config_validates():
         capture_output=True,
         text=True,
         cwd=Path(__file__).resolve().parent.parent,
+        check=False,
     )
 
     if completed.returncode != 0:

@@ -2,8 +2,6 @@ from src.transformations import clean_text_data, upsert_to_silver
 from src.utils import get_spark_session
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StringType, StructField, StructType, IntegerType
-import pytest
-
 
 def test_clean_text_data(spark):
     # 1. Arrange: Create a sample DataFrame
@@ -101,10 +99,13 @@ def test_clean_text_data_preserves_other_columns(spark):
     assert rows[1] == "alice"
 
 
-@pytest.mark.xfail(strict=True, reason="Iceberg not available in test environment")
 def test_upsert_to_silver_insert_only(spark):
     """Test upsert_to_silver function for insert-only case."""
     from pyspark.sql.functions import current_timestamp
+    from tests.test_integration import _ensure_iceberg_available
+
+    # Skip test if Iceberg is not available
+    _ensure_iceberg_available(spark)
 
     # Create namespace if not exists
     spark.sql("CREATE NAMESPACE IF NOT EXISTS local.db")
