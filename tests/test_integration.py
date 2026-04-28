@@ -7,9 +7,9 @@ def test_debug_spark_env(spark):
     # Test basic Spark configuration and catalog access
     """
     Verify the Spark session has basic configuration and at least one available catalog.
-    
+
     Performs assertions that Spark configuration is non-empty, that the `spark.app.name` setting is present, and that `SHOW CATALOGS` returns at least one catalog.
-    
+
     Parameters:
         spark (pyspark.sql.SparkSession): Spark session used for the test.
     """
@@ -26,9 +26,9 @@ def test_debug_spark_env(spark):
 def _ensure_iceberg_available(spark):
     """
     Ensure the Iceberg catalog "local.db" is available and selected for subsequent operations.
-    
+
     Creates the namespace `local.db` if it does not exist and sets it as the current catalog/namespace using the provided Spark session. If catalog initialization fails, the test is failed via pytest.fail with any available Java exception detail.
-    
+
     Parameters:
         spark (pyspark.sql.SparkSession): Spark session used to execute the catalog DDL.
     """
@@ -86,9 +86,9 @@ def test_upsert_to_silver_merges_inserts_and_updates(spark):
 def test_main_job_etl_flow_creates_iceberg_tables_and_aggregates(spark, monkeypatch):
     """
     Run the ETL entrypoint with a mocked CSV input and assert that Iceberg tables are created and gold-layer aggregations are correct.
-    
+
     Mocks pyspark.sql.DataFrameReader.csv to return a small sample DataFrame, invokes main_job.main(session=spark), then asserts that the expected Iceberg tables (local.db.bronze_events, local.db.silver_users, local.db.gold_user_stats) exist and that the gold_user_stats table contains one "Active" and one "Inactive" user count. Cleans up created tables on completion.
-    
+
     Parameters:
         spark (pyspark.sql.SparkSession): Pytest Spark session fixture used to run the ETL job.
         monkeypatch (pytest.MonkeyPatch): Pytest monkeypatch fixture used to stub the CSV reader.
@@ -108,7 +108,7 @@ def test_main_job_etl_flow_creates_iceberg_tables_and_aggregates(spark, monkeypa
     monkeypatch.setattr(
         pyspark.sql.DataFrameReader,
         "csv",
-        lambda self, path, *args, **kwargs: sample_df,
+        lambda self, _path, *_args, **_kwargs: sample_df,
     )
 
     try:

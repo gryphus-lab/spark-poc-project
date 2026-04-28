@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 def main(input_path="s3a://warehouse/input/sample.csv"):
     """
     Run the Silver-layer upsert job for user data from the given CSV input path.
-    
+
     Reads a CSV using EXPECTED_SCHEMA, verifies the file is not empty and required columns are present, cleans the `name` field, adds an `updated_at` timestamp, ensures the `local.db` namespace exists, and upserts the resulting DataFrame into the `local.db.silver_users` Iceberg table partitioned by `status`. The SparkSession created for the job is stopped before the function exits.
-    
+
     Parameters:
         input_path (str): URI or filesystem path to the input CSV file.
-    
+
     Raises:
         ValueError: If the input file is empty or if any required column from EXPECTED_SCHEMA is missing.
     """

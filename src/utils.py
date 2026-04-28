@@ -8,10 +8,10 @@ logger = logging.getLogger(__name__)
 def get_spark_session(app_name="IcebergDataLake"):
     """
     Create and configure a SparkSession for Apache Iceberg with a Hadoop 'local' catalog and S3A (MinIO) connectivity.
-    
+
     Parameters:
         app_name (str): Name to assign to the Spark application. Defaults to "IcebergDataLake".
-    
+
     Returns:
         SparkSession: A SparkSession configured with Iceberg Spark extensions, a `local` Hadoop catalog (warehouse at /opt/spark/warehouse), and S3A/MinIO endpoint and credentials.
     """

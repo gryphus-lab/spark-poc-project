@@ -32,7 +32,7 @@ def test_dockerfile_exists_and_contains_required_stages():
 def test_docker_compose_file_has_expected_services():
     """
     Validate that the repository's docker-compose.yml exists and defines the required top-level keys, expected services, and specific connection strings.
-    
+
     Checks performed:
     - File exists at the repository root.
     - Top-level keys "services:", "volumes:", and the "minio-data:" volume are present.
@@ -93,7 +93,7 @@ def _docker_compose_command():
 def test_docker_compose_config_validates():
     """
     Validate that the repository's docker-compose configuration can be rendered and includes all expected services.
-    
+
     Obtains the compose validation command and runs it against the repository compose file. Raises an AssertionError with a clear message if rendering times out, if the compose command exits non‑zero (including stdout and stderr), or if any service listed in EXPECTED_SERVICES is not present as a top‑level service key in the rendered config output.
     """
     command = _docker_compose_command()
@@ -108,8 +108,8 @@ def test_docker_compose_config_validates():
             check=False,
             timeout=30,
         )
-    except subprocess.TimeoutExpired:
-        raise AssertionError("docker compose config timed out")
+    except subprocess.TimeoutExpired as e:
+        raise AssertionError("docker compose config timed out") from e
 
     if completed.returncode != 0:
         raise AssertionError(

@@ -27,10 +27,10 @@ def test_clean_text_data_lowercases_via_spark_fixture(spark):
 def normalize_sql(sql):
     """
     Normalize a SQL string for stable comparisons by collapsing whitespace and lowercasing.
-    
+
     Parameters:
         sql (str): The SQL text to normalize.
-    
+
     Returns:
         normalized_sql (str): The input SQL with all runs of whitespace replaced by a single space and converted to lowercase.
     """

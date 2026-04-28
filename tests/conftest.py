@@ -6,12 +6,12 @@ import shutil
 from pyspark.sql import SparkSession
 
 
-def _ensure_iceberg_available(spark):
+def _ensure_iceberg_available(spark) -> None:
     """
     Ensure the Iceberg catalog and namespace are initialized for the given Spark session.
-    
+
     Performs minimal catalog DDL to create and switch to the fully-qualified namespace. If initialization fails, the test is failed with the underlying error message; when available, Java exception details are included.
-    
+
     Parameters:
         spark (pyspark.sql.SparkSession): Spark session used to execute catalog SQL.
     """
@@ -21,6 +21,7 @@ def _ensure_iceberg_available(spark):
         # Once created, we can switch safely
         spark.sql("USE local.db")
     except Exception as e:
+        # Broad Exception is intentional: Java exceptions from PySpark may not be subclasses of standard Python exceptions
         # Catch and report the specific Java cause
         error_detail = str(e)
         if hasattr(e, "java_exception"):
@@ -33,12 +34,12 @@ def spark():
     # 1. Kill any existing sessions
     """
     Create and yield a single SparkSession configured for Apache Iceberg for use in tests.
-    
+
     This fixture ensures any existing active SparkSession is stopped, enforces a Java 17 runtime (using JAVA_HOME or a validated fallback), configures PySpark to use the current Python executable, and creates a temporary Iceberg warehouse. The SparkSession is torn down and the temporary warehouse directory is removed when the fixture finalizes; if session creation fails the temporary directory is removed before re-raising the error.
-    
+
     Returns:
         spark (pyspark.sql.SparkSession): A SparkSession preconfigured with Iceberg catalog and extensions.
-    
+
     Raises:
         EnvironmentError: If JAVA_HOME is not set and the fallback Java 17 path does not exist.
     """
