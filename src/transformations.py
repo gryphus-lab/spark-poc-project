@@ -86,7 +86,7 @@ def upsert_to_silver(
     if partition_spec:
         for p in partition_spec.split(","):
             p = p.strip()
-            if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", p):
+            if not re.match(r"^[a-zA-Z_][\w]*$", p):
                 raise ValueError(f"Invalid partition identifier: {p}")
 
     # 1. Setup Temp View
