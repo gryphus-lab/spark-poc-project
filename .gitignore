@@ -18,6 +18,7 @@ coverage.xml
 htmlcov/
 *.iml
 *.log
+.env
 
 **/*.pdf
 **/*.png
