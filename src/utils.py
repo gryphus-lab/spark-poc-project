@@ -7,13 +7,13 @@ logger = logging.getLogger(__name__)
 
 def get_spark_session(app_name="IcebergDataLake"):
     """
-    Create a SparkSession configured for Apache Iceberg and S3A (MinIO) access.
-
+    Create and configure a SparkSession for Apache Iceberg with a Hadoop 'local' catalog and S3A (MinIO) connectivity.
+    
     Parameters:
-        app_name (str): Application name to set for the Spark session. Defaults to "IcebergDataLake".
-
+        app_name (str): Name to assign to the Spark application. Defaults to "IcebergDataLake".
+    
     Returns:
-        SparkSession: A SparkSession configured with Iceberg Spark extensions, a `local` Hadoop catalog, and S3A/MinIO endpoint and credentials.
+        SparkSession: A SparkSession configured with Iceberg Spark extensions, a `local` Hadoop catalog (warehouse at /opt/spark/warehouse), and S3A/MinIO endpoint and credentials.
     """
     # Detect non-local environment via common environment indicators
     is_non_local = (

@@ -21,7 +21,15 @@ def clean_text_data(df, column_name):
 
 
 def _get_existing_partitions(spark, table_name):
-    """Helper to parse Iceberg partition columns from table metadata."""
+    """
+    Retrieve the Iceberg table's partition column names from its metadata.
+    
+    Parameters:
+        table_name (str): Table identifier to describe (for example 'db.table' or 'catalog.db.table').
+    
+    Returns:
+        list[str]: Ordered list of partition column names. Returns an empty list if the table does not exist or its partition metadata cannot be read.
+    """
     try:
         # Parse partition information from DESCRIBE EXTENDED
         rows = spark.sql(f"DESCRIBE EXTENDED {table_name}").collect()
@@ -59,6 +67,20 @@ def upsert_to_silver(
     spark, df, table_name, partition_spec=None, table_schema=None, merge_key="id"
 ):
     # Validate identifiers to prevent SQL injection
+    """
+    Create (if needed) an Iceberg table and upsert rows from a DataFrame into it using a MERGE.
+    
+    Parameters:
+        spark: SparkSession used to execute SQL and manage temporary views.
+        df: DataFrame containing rows to be merged into the target table.
+        table_name (str): Fully qualified table identifier (dots allowed for namespace).
+        partition_spec (str, optional): Comma-separated partition column names to use for table creation.
+        table_schema (str, optional): SQL column definitions (DDL) to use when creating the table; if omitted, schema is derived from df.
+        merge_key (str, optional): Column name used as the merge key to match existing rows; defaults to "id".
+    
+    Raises:
+        ValueError: If table_name or any partition identifier is invalid, if merge_key is not present in df.columns, or if an existing table's partitioning conflicts with the requested partition_spec.
+    """
     if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_.]*$", table_name):
         raise ValueError(f"Invalid table_name: {table_name}")
     if partition_spec:
