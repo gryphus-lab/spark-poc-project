@@ -63,7 +63,7 @@ def main(session=None, csv_path="/opt/spark/project/data/input/sample.csv"):
         # Keep the latest row per id (using monotonically_increasing_id as tie-breaker)
         window_spec = Window.partitionBy("id").orderBy(
             desc(monotonically_increasing_id())
-        )
+        ).rowsBetween(Window.unboundedPreceding, Window.currentRow)
         deduped_updates = (
             cleaned_df.withColumn("rn", row_number().over(window_spec))
             .filter("rn = 1")
