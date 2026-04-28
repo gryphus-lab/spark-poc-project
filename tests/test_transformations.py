@@ -101,3 +101,9 @@ def test_upsert_to_silver_creates_correct_sql(mock_spark):
 
     # Verify temp view was created
     assert mock_df.createOrReplaceTempView.called
+
+    # Verify cleanup was performed
+    assert mock_spark.catalog.dropTempView.called
+    # Ensure correct cleanup - the temp view name should match
+    temp_view_name = mock_df.createOrReplaceTempView.call_args[0][0]
+    assert mock_spark.catalog.dropTempView.call_args[0][0] == temp_view_name

@@ -54,7 +54,6 @@ def get_spark_session(app_name="IcebergDataLake"):
         .config("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.local.type", "hadoop")
         .config("spark.sql.catalog.local.warehouse", "/opt/spark/warehouse")
-        .config("spark.sql.catalog.local.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
         .config("spark.hadoop.fs.s3a.endpoint", s3_endpoint)
         .config("spark.hadoop.fs.s3a.access.key", s3a_access_key)
         .config("spark.hadoop.fs.s3a.secret.key", s3a_secret_key)
