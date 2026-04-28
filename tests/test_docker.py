@@ -21,8 +21,8 @@ def test_dockerfile_exists_and_contains_required_stages():
     assert DOCKERFILE.exists(), "Dockerfile must exist in the repository root"
     content = DOCKERFILE.read_text()
 
-    assert "FROM apache/spark:3.5.0 AS builder" in content
-    assert "FROM apache/spark:3.5.0" in content
+    assert "FROM apache/spark:3.5.8 AS builder" in content
+    assert "FROM apache/spark:3.5.8" in content
     assert "COPY requirements-runtime.txt ." in content
     assert "COPY ./src src" in content
     assert "COPY ./apps apps" in content
