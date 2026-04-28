@@ -63,6 +63,46 @@ def _generate_schema_ddl(df):
     )
 
 
+def _validate_table_name(table_name):
+    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_.]*$", table_name):
+        raise ValueError(f"Invalid table_name: {table_name}")
+
+
+def _validate_partition_spec(partition_spec):
+    for p in partition_spec.split(","):
+        p = p.strip()
+        if not re.match(r"^[a-zA-Z_][\w]*$", p):
+            raise ValueError(f"Invalid partition identifier: {p}")
+
+
+def _validate_merge_key(df, merge_key):
+    if merge_key not in df.columns:
+        raise ValueError(f"Merge key '{merge_key}' not found in columns: {df.columns}")
+
+
+def _validate_existing_partitions(spark, table_name, partition_spec):
+    if not partition_spec or not spark.catalog.tableExists(table_name):
+        return
+    existing = _get_existing_partitions(spark, table_name)
+    requested = [p.strip() for p in partition_spec.split(",")]
+    if existing and set(existing) != set(requested):
+        raise ValueError(f"Partition mismatch for {table_name}. Existing: {existing}")
+
+
+def _build_merge_clauses(df, merge_key):
+    cols_wrapped = [f"`{c.replace('`', '')}`" for c in df.columns]
+    m_key_wrapped = f"`{merge_key.replace('`', '')}`"
+    update_set = ", ".join(
+        [
+            f"t.`{c.replace('`', '')}` = s.`{c.replace('`', '')}`"
+            for c in df.columns
+            if c != merge_key
+        ]
+    )
+    update_clause = f"WHEN MATCHED THEN UPDATE SET {update_set}" if update_set else ""
+    return cols_wrapped, m_key_wrapped, update_clause
+
+
 def upsert_to_silver(
     spark, df, table_name, partition_spec=None, table_schema=None, merge_key="id"
 ):
@@ -81,62 +121,26 @@ def upsert_to_silver(
     Raises:
         ValueError: If table_name or any partition identifier is invalid, if merge_key is not present in df.columns, or if an existing table's partitioning conflicts with the requested partition_spec.
     """
-    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_.]*$", table_name):
-        raise ValueError(f"Invalid table_name: {table_name}")
+    _validate_table_name(table_name)
     if partition_spec:
-        for p in partition_spec.split(","):
-            p = p.strip()
-            if not re.match(r"^[a-zA-Z_][\w]*$", p):
-                raise ValueError(f"Invalid partition identifier: {p}")
+        _validate_partition_spec(partition_spec)
 
-    # 1. Setup Temp View
     temp_view = f"incoming_{table_name.replace('.', '_')}_{uuid4().hex}"
     df.createOrReplaceTempView(temp_view)
 
     try:
-        # 2. Handle Schema and Partitions
         schema_ddl = table_schema or _generate_schema_ddl(df)
         partition_clause = (
             f"PARTITIONED BY ({partition_spec})" if partition_spec else ""
         )
 
-        # 3. Validate Existing Table Partitioning
-        if partition_spec and spark.catalog.tableExists(table_name):
-            existing = _get_existing_partitions(spark, table_name)
-            requested = [p.strip() for p in partition_spec.split(",")]
-            # Skip validation if we can't determine existing partitions (Iceberg compatibility)
-            if existing and set(existing) != set(requested):
-                raise ValueError(
-                    f"Partition mismatch for {table_name}. Existing: {existing}"
-                )
-
-        # 4. Create Table
+        _validate_existing_partitions(spark, table_name, partition_spec)
         spark.sql(
             f"CREATE TABLE IF NOT EXISTS {table_name} ({schema_ddl}) USING iceberg {partition_clause}"
         )
 
-        # 5. Build Merge SQL
-        # Validate merge key exists in unwrapped column names
-        if merge_key not in df.columns:
-            raise ValueError(
-                f"Merge key '{merge_key}' not found in columns: {df.columns}"
-            )
-
-        # Build column references: backtick-wrapped for SQL
-        cols_wrapped = [f"`{c.replace('`', '')}`" for c in df.columns]
-        m_key_wrapped = f"`{merge_key.replace('`', '')}`"
-
-        # Generate UPDATE SET from unwrapped column names
-        update_set = ", ".join(
-            [
-                f"t.`{c.replace('`', '')}` = s.`{c.replace('`', '')}`"
-                for c in df.columns
-                if c != merge_key
-            ]
-        )
-        update_clause = (
-            f"WHEN MATCHED THEN UPDATE SET {update_set}" if update_set else ""
-        )
+        _validate_merge_key(df, merge_key)
+        cols_wrapped, m_key_wrapped, update_clause = _build_merge_clauses(df, merge_key)
 
         spark.sql(f"""
             MERGE INTO {table_name} t USING {temp_view} s ON t.{m_key_wrapped} = s.{m_key_wrapped}
