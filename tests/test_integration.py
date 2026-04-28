@@ -104,6 +104,7 @@ def test_main_job_etl_flow_creates_iceberg_tables_and_aggregates(spark, monkeypa
 
     # Mock the CSV reader to return our sample DataFrame
     import pyspark.sql
+
     monkeypatch.setattr(
         pyspark.sql.DataFrameReader,
         "csv",
