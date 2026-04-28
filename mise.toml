@@ -5,8 +5,6 @@ uv = "latest"
 ruff = "latest"
 
 [env]
-# Point Spark to the Java path managed by mise
-JAVA_HOME = "~/.local/share/mise/installs/java/temurin-17"
 # Add your src folder to PYTHONPATH so imports work locally
 PYTHONPATH = "."
 PROJECT_NAME = "{{ config_root | basename }}"

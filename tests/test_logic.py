@@ -2,6 +2,7 @@ from src.transformations import clean_text_data, upsert_to_silver
 from src.utils import get_spark_session
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StringType, StructField, StructType, IntegerType
+import uuid
 
 
 def test_clean_text_data(spark):
@@ -24,11 +25,15 @@ def test_clean_text_data(spark):
 
 
 def test_get_spark_session():
-    # Act: Call the function
+    # Act: Call the function (will use dev defaults when env vars not set)
     session = get_spark_session()
-
-    # Assert: Check that it returns a SparkSession
-    assert isinstance(session, SparkSession)
+    try:
+        # Assert: Check that it returns a SparkSession
+        assert isinstance(session, SparkSession)
+    finally:
+        # Only stop if we created it in this test
+        if session != SparkSession.getActiveSession():
+            session.stop()
 
 
 def test_clean_text_data_empty_string(spark):
@@ -103,7 +108,7 @@ def test_clean_text_data_preserves_other_columns(spark):
 def test_upsert_to_silver_insert_only(spark):
     """Test upsert_to_silver function for insert-only case."""
     from pyspark.sql.functions import current_timestamp
-    from tests.test_integration import _ensure_iceberg_available
+    from tests.conftest import _ensure_iceberg_available
 
     # Skip test if Iceberg is not available
     _ensure_iceberg_available(spark)
@@ -118,24 +123,24 @@ def test_upsert_to_silver_insert_only(spark):
     )
 
     # Use a temporary table name for testing
-    table_name = "local.db.test_silver_table_insert"
+    table_name = f"local.db.test_silver_table_insert_{uuid.uuid4().hex}"
 
-    # Call the function
-    upsert_to_silver(spark, df, table_name, partition_spec="status")
+    try:
+        # Call the function
+        upsert_to_silver(spark, df, table_name, partition_spec="status")
 
-    # Verify the table was created and data inserted
-    assert spark.catalog.tableExists(table_name)
-    result_df = spark.table(table_name)
-    rows = result_df.collect()
-    assert len(rows) == 2
+        # Verify the table was created and data inserted
+        assert spark.catalog.tableExists(table_name)
+        result_df = spark.table(table_name)
+        rows = result_df.collect()
+        assert len(rows) == 2
 
-    # Check that data matches
-    row_dict = {row["id"]: (row["name"], row["status"]) for row in rows}
-    assert row_dict[1] == ("Alice", "Active")
-    assert row_dict[2] == ("Bob", "Inactive")
-
-    # Clean up
-    spark.sql(f"DROP TABLE {table_name}")
+        # Check that data matches
+        row_dict = {row["id"]: (row["name"], row["status"]) for row in rows}
+        assert row_dict[1] == ("Alice", "Active")
+        assert row_dict[2] == ("Bob", "Inactive")
+    finally:
+        spark.sql(f"DROP TABLE IF EXISTS {table_name}")
 
 
 def test_clean_text_data_different_column_name(spark):
@@ -156,7 +161,12 @@ def test_clean_text_data_row_count_unchanged(spark):
     assert result_df.count() == len(input_data)
 
 
-def test_get_spark_session_with_custom_app_name(spark):
+def test_get_spark_session_with_custom_app_name():
     """get_spark_session accepts a custom app name and returns a SparkSession."""
     session = get_spark_session("CustomTestApp")
-    assert isinstance(session, SparkSession)
+    try:
+        assert isinstance(session, SparkSession)
+    finally:
+        # Only stop if we created it in this test
+        if session != SparkSession.getActiveSession():
+            session.stop()

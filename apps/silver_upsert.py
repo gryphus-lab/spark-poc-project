@@ -1,9 +1,12 @@
 from pyspark.sql.functions import current_timestamp
 from src.utils import get_spark_session
 from src.transformations import upsert_to_silver, clean_text_data, EXPECTED_SCHEMA
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-def main():
+def main(input_path="s3a://warehouse/input/sample.csv"):
     spark = get_spark_session("Silver-Upsert-Job")
 
     try:
@@ -12,9 +15,14 @@ def main():
 
         # 1. Read Raw (Bronze) Data from MinIO
         # In a real lake, you'd read from s3a://warehouse/bronze/
-        raw_df = spark.read.schema(EXPECTED_SCHEMA).csv(
-            "s3a://warehouse/input/sample.csv"
-        )
+        raw_df = spark.read.schema(EXPECTED_SCHEMA).csv(input_path)
+
+        # Validate raw_df
+        if raw_df.isEmpty():
+            raise ValueError(f"Input file at {input_path} is empty or not found")
+        for col in EXPECTED_SCHEMA.fieldNames():
+            if col not in raw_df.columns:
+                raise ValueError(f"Required column '{col}' missing in input data")
 
         # 2. Clean and add Metadata
         cleaned_df = clean_text_data(raw_df, "name")

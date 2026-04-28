@@ -2,42 +2,17 @@ import pytest
 from apps import main_job
 from src.transformations import EXPECTED_SCHEMA, upsert_to_silver
 
-import os
-
 
 def test_debug_spark_env(spark):
-    print("\n--- SPARK DEBUG INFO ---")
-
-    # 1. Print all Spark Configurations
+    # Test basic Spark configuration and catalog access
     conf = spark.sparkContext.getConf().getAll()
-    print("Active Configurations:")
-    for k, v in sorted(conf):
-        print(f"  {k}: {v}")
+    assert len(conf) > 0, "Spark configuration should not be empty"
+    conf_dict = dict(conf)
+    assert "spark.app.name" in conf_dict, "Spark app name should be configured"
 
-    # 2. Check for loaded Iceberg Jars in the JVM
-    print("\nLoaded Jars in JVM:")
-    try:
-        # Access the internal Java Spark Context to list jars
-        jvm_jars = spark.sparkContext._jsc.sc().listJars()
-        # Convert Java Collection to Python list
-        jars_list = [jvm_jars.apply(i) for i in range(jvm_jars.length())]
-        for jar in jars_list:
-            print(f"  Found Jar: {jar}")
-        if not jars_list:
-            print("  No external Jars detected in JVM.")
-    except Exception as e:
-        print(f"  Could not list Jars: {e}")
-
-    # 3. Check Java Runtime
-
-    print(f"\nEnvironment JAVA_HOME: {os.environ.get('JAVA_HOME', 'Not Set')}")
-
-    # 4. Test basic Catalog access
-    print("\nCatalog Status:")
-    try:
-        spark.sql("SHOW CATALOGS").show()
-    except Exception as e:
-        print(f"  SHOW CATALOGS failed: {e}")
+    # Test catalog access
+    catalogs_df = spark.sql("SHOW CATALOGS")
+    assert catalogs_df.count() > 0, "At least one catalog should be available"
 
 
 def _ensure_iceberg_available(spark):
@@ -52,7 +27,9 @@ def _ensure_iceberg_available(spark):
         spark.sql("USE local.db")
     except Exception as e:
         # Catch and report the specific Java cause
-        error_detail = getattr(e, "desc", str(e))
+        error_detail = str(e)
+        if hasattr(e, "java_exception"):
+            error_detail = str(e.java_exception)
         pytest.fail(f"Iceberg Catalog Setup Failed: {error_detail}")
 
 
@@ -87,6 +64,7 @@ def test_upsert_to_silver_merges_inserts_and_updates(spark):
         }
         assert len(final_results) == 3
         assert final_results[1] == ("Alice Updated", "Active")
+        assert final_results[2] == ("Bob", "Inactive")  # Untouched record preserved
         assert final_results[3] == ("Carol", "Active")
 
     finally:
@@ -107,7 +85,9 @@ def test_main_job_etl_flow_creates_iceberg_tables_and_aggregates(spark, monkeypa
     import pyspark.sql
 
     monkeypatch.setattr(
-        pyspark.sql.DataFrameReader, "csv", lambda self, path: sample_df
+        pyspark.sql.DataFrameReader,
+        "csv",
+        lambda self, path, *args, **kwargs: sample_df,
     )
 
     try:
