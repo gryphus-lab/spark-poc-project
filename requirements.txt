@@ -2,10 +2,10 @@
 pyspark==3.5.0
 
 # Data
-pandas>=2.0.0
-numpy>=1.21,<2.0
+pandas>=3.0.2
+numpy>=2.4.4,<3.0
 
 # Development & Testing
-pytest>=7.0.0
+pytest>=9.0.3
 pytest-cov>=7.1.0
 ruff>=0.15.11
