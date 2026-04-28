@@ -2,48 +2,35 @@ import pytest
 from apps import main_job
 from src.transformations import EXPECTED_SCHEMA, upsert_to_silver
 
-import os
-
 
 def test_debug_spark_env(spark):
-    print("\n--- SPARK DEBUG INFO ---")
+    # Test basic Spark configuration and catalog access
+    """
+    Verify the Spark session has basic configuration and at least one available catalog.
 
-    # 1. Print all Spark Configurations
+    Performs assertions that Spark configuration is non-empty, that the `spark.app.name` setting is present, and that `SHOW CATALOGS` returns at least one catalog.
+
+    Parameters:
+        spark (pyspark.sql.SparkSession): Spark session used for the test.
+    """
     conf = spark.sparkContext.getConf().getAll()
-    print("Active Configurations:")
-    for k, v in sorted(conf):
-        print(f"  {k}: {v}")
+    assert len(conf) > 0, "Spark configuration should not be empty"
+    conf_dict = dict(conf)
+    assert "spark.app.name" in conf_dict, "Spark app name should be configured"
 
-    # 2. Check for loaded Iceberg Jars in the JVM
-    print("\nLoaded Jars in JVM:")
-    try:
-        # Access the internal Java Spark Context to list jars
-        jvm_jars = spark.sparkContext._jsc.sc().listJars()
-        # Convert Java Collection to Python list
-        jars_list = [jvm_jars.apply(i) for i in range(jvm_jars.length())]
-        for jar in jars_list:
-            print(f"  Found Jar: {jar}")
-        if not jars_list:
-            print("  No external Jars detected in JVM.")
-    except Exception as e:
-        print(f"  Could not list Jars: {e}")
-
-    # 3. Check Java Runtime
-
-    print(f"\nEnvironment JAVA_HOME: {os.environ.get('JAVA_HOME', 'Not Set')}")
-
-    # 4. Test basic Catalog access
-    print("\nCatalog Status:")
-    try:
-        spark.sql("SHOW CATALOGS").show()
-    except Exception as e:
-        print(f"  SHOW CATALOGS failed: {e}")
+    # Test catalog access
+    catalogs_df = spark.sql("SHOW CATALOGS")
+    assert catalogs_df.count() > 0, "At least one catalog should be available"
 
 
 def _ensure_iceberg_available(spark):
     """
-    Forces initialization of the Iceberg catalog by performing a
-    namespace operation using the fully-qualified name.
+    Ensure the Iceberg catalog "local.db" is available and selected for subsequent operations.
+
+    Creates the namespace `local.db` if it does not exist and sets it as the current catalog/namespace using the provided Spark session. If catalog initialization fails, the test is failed via pytest.fail with any available Java exception detail.
+
+    Parameters:
+        spark (pyspark.sql.SparkSession): Spark session used to execute the catalog DDL.
     """
     try:
         # Trigger catalog load by referencing it directly in a DDL command
@@ -52,7 +39,9 @@ def _ensure_iceberg_available(spark):
         spark.sql("USE local.db")
     except Exception as e:
         # Catch and report the specific Java cause
-        error_detail = getattr(e, "desc", str(e))
+        error_detail = str(e)
+        if hasattr(e, "java_exception"):
+            error_detail = str(e.java_exception)
         pytest.fail(f"Iceberg Catalog Setup Failed: {error_detail}")
 
 
@@ -87,6 +76,7 @@ def test_upsert_to_silver_merges_inserts_and_updates(spark):
         }
         assert len(final_results) == 3
         assert final_results[1] == ("Alice Updated", "Active")
+        assert final_results[2] == ("Bob", "Inactive")  # Untouched record preserved
         assert final_results[3] == ("Carol", "Active")
 
     finally:
@@ -94,6 +84,15 @@ def test_upsert_to_silver_merges_inserts_and_updates(spark):
 
 
 def test_main_job_etl_flow_creates_iceberg_tables_and_aggregates(spark, monkeypatch):
+    """
+    Run the ETL entrypoint with a mocked CSV input and assert that Iceberg tables are created and gold-layer aggregations are correct.
+
+    Mocks pyspark.sql.DataFrameReader.csv to return a small sample DataFrame, invokes main_job.main(session=spark), then asserts that the expected Iceberg tables (local.db.bronze_events, local.db.silver_users, local.db.gold_user_stats) exist and that the gold_user_stats table contains one "Active" and one "Inactive" user count. Cleans up created tables on completion.
+
+    Parameters:
+        spark (pyspark.sql.SparkSession): Pytest Spark session fixture used to run the ETL job.
+        monkeypatch (pytest.MonkeyPatch): Pytest monkeypatch fixture used to stub the CSV reader.
+    """
     _ensure_iceberg_available(spark)
 
     sample_rows = [
@@ -107,7 +106,9 @@ def test_main_job_etl_flow_creates_iceberg_tables_and_aggregates(spark, monkeypa
     import pyspark.sql
 
     monkeypatch.setattr(
-        pyspark.sql.DataFrameReader, "csv", lambda self, path: sample_df
+        pyspark.sql.DataFrameReader,
+        "csv",
+        lambda _self, _path, *_args, **_kwargs: sample_df,
     )
 
     try:

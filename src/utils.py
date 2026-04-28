@@ -7,13 +7,13 @@ logger = logging.getLogger(__name__)
 
 def get_spark_session(app_name="IcebergDataLake"):
     """
-    Create a SparkSession configured for Apache Iceberg, a REST-backed `local` catalog, and S3A (MinIO) access.
+    Create and configure a SparkSession for Apache Iceberg with a Hadoop 'local' catalog and S3A (MinIO) connectivity.
 
     Parameters:
-        app_name (str): Application name to set for the Spark session. Defaults to "IcebergDataLake".
+        app_name (str): Name to assign to the Spark application. Defaults to "IcebergDataLake".
 
     Returns:
-        SparkSession: A SparkSession configured with Iceberg Spark extensions, a `local` REST catalog pointing at http://catalog:8181, and S3A/MinIO endpoint and credentials.
+        SparkSession: A SparkSession configured with Iceberg Spark extensions, a `local` Hadoop catalog (warehouse at /opt/spark/warehouse), and S3A/MinIO endpoint and credentials.
     """
     # Detect non-local environment via common environment indicators
     is_non_local = (
@@ -34,20 +34,15 @@ def get_spark_session(app_name="IcebergDataLake"):
                 "Please set both environment variables."
             )
     else:
-        # In local/dev environments, use defaults but warn
+        # In local/dev/test environments, use safe defaults
         if not s3a_access_key:
             s3a_access_key = "admin"
-            logger.warning(
-                "S3A_ACCESS_KEY not set, using default dev credential 'admin'"
-            )
+            logger.debug("S3A_ACCESS_KEY not set, using dev default 'admin'")
         if not s3a_secret_key:
             s3a_secret_key = "password"
-            logger.warning(
-                "S3A_SECRET_KEY not set, using default dev credential 'password'"
-            )
+            logger.debug("S3A_SECRET_KEY not set, using dev default 'password'")
 
-    # Get endpoints from environment with docker-compose defaults
-    iceberg_rest_uri = os.environ.get("ICEBERG_REST_URI", "http://catalog:8181")
+    # Get S3 endpoint from environment with docker-compose default
     s3_endpoint = os.environ.get("S3_ENDPOINT", "http://minio:9000")
 
     return (
@@ -57,13 +52,8 @@ def get_spark_session(app_name="IcebergDataLake"):
             "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
         )
         .config("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog")
-        .config("spark.sql.catalog.local.type", "rest")
-        .config("spark.sql.catalog.local.uri", iceberg_rest_uri)
-        .config("spark.sql.catalog.local.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
-        .config("spark.sql.catalog.local.s3.endpoint", s3_endpoint)
-        .config("spark.sql.catalog.local.s3.access-key-id", s3a_access_key)
-        .config("spark.sql.catalog.local.s3.secret-access-key", s3a_secret_key)
-        .config("spark.sql.catalog.local.s3.path-style-access", "true")
+        .config("spark.sql.catalog.local.type", "hadoop")
+        .config("spark.sql.catalog.local.warehouse", "/opt/spark/warehouse")
         .config("spark.hadoop.fs.s3a.endpoint", s3_endpoint)
         .config("spark.hadoop.fs.s3a.access.key", s3a_access_key)
         .config("spark.hadoop.fs.s3a.secret.key", s3a_secret_key)

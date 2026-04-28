@@ -15,3 +15,12 @@ dist/
 .idea
 .vscode
 .DS_Store
+*.log
+.coverage
+htmlcov/
+.env
+*.env
+docs/_build/
+site/
+*.swp
+*~
