@@ -1,4 +1,4 @@
-FROM apache/spark:4.1.1
+FROM apache/spark:3.5.8
 
 WORKDIR /opt/spark/project
 
@@ -9,9 +9,9 @@ COPY requirements-runtime.txt .
 
 USER root
 
-# Install Iceberg 1.7.1 (compatible with Spark 4.1.1) and Hadoop packages at runtime
+# Install Iceberg and Hadoop packages at runtime
 RUN /opt/spark/bin/spark-submit \
-        --packages org.apache.hadoop:hadoop-aws:3.4.0,com.amazonaws:aws-java-sdk-bundle:1.12.767,org.apache.iceberg:iceberg-spark-runtime-4.1_2.13:1.7.1,org.apache.iceberg:iceberg-aws-bundle:1.7.1 \
+        --packages org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1 \
             --version > /dev/null && \
     if [ -s requirements-runtime.txt ]; then \
       pip install --no-cache-dir -r requirements-runtime.txt || exit 1; \

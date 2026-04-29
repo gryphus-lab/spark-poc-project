@@ -67,8 +67,8 @@ def spark():
     # Absolute URI is mandatory for Hadoop catalogs on macOS/Linux
     warehouse_uri = f"file://{os.path.abspath(warehouse_dir)}"
 
-    # 4. Spark 4.1.1 + Iceberg 1.7.1 Coordinates (Scala 2.13 for Spark 4.x)
-    ICEBERG_PKG = "org.apache.iceberg:iceberg-spark-runtime-4.1_2.13:1.7.1"
+    # 4. Spark 3.5 + Iceberg 1.10.1 Coordinates
+    ICEBERG_PKG = "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1"
 
     builder = (
         SparkSession.builder.master("local[1]")

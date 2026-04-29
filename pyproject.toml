@@ -6,7 +6,7 @@ authors = [
     { name = "Your Name", email = "you@example.com" }
 ]
 dependencies = [
-    "pyspark==4.1.1",
+    "pyspark==3.5.8",
 ]
 requires-python = ">=3.11,<3.12"
 
