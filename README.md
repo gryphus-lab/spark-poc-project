@@ -87,33 +87,34 @@ Or directly:
 ```bash
 docker compose up --build -d
 ```
+
 ### Running ETL Jobs
 
 Run ETL jobs from the `spark-submit` service once the stack is up.
 
 1. Define package coordinates used by both jobs:
 
-```bash
-SPARK_PACKAGES="org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1"
-```
+   ```bash
+   SPARK_PACKAGES="org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1"
+   ```
 
 2. Run the full bronze→silver→gold job:
 
-```bash
-docker compose exec spark-submit /opt/spark/bin/spark-submit \
-  --master spark://spark-master:7077 \
-  --packages "${SPARK_PACKAGES}" \
-  /opt/spark/project/apps/main_job.py
-```
+   ```bash
+   docker compose exec spark-submit /opt/spark/bin/spark-submit \
+   --master spark://spark-master:7077 \
+   --packages "${SPARK_PACKAGES}" \
+   /opt/spark/project/apps/main_job.py
+   ```
 
 3. Run the silver upsert job:
 
-```bash
-docker compose exec spark-submit /opt/spark/bin/spark-submit \
-  --master spark://spark-master:7077 \
-  --packages "${SPARK_PACKAGES}" \
-  /opt/spark/project/apps/silver_upsert.py
-```
+   ```bash
+   docker compose exec spark-submit /opt/spark/bin/spark-submit \
+   --master spark://spark-master:7077 \
+   --packages "${SPARK_PACKAGES}" \
+   /opt/spark/project/apps/silver_upsert.py
+   ```
 
 `apps/silver_upsert.py` reads from `s3a://warehouse/input/sample.csv` by default. Upload that object to the `warehouse` bucket first (for example via MinIO Console).
 
