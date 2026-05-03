@@ -1,123 +1,177 @@
 # Spark POC Project
 
-A small PySpark proof-of-concept project demonstrating text transformation logic and test coverage with `pytest`.
+A PySpark proof-of-concept project that demonstrates a bronze→silver→gold ETL pipeline with Apache Iceberg tables and MinIO-backed object storage.
+
+## Latest Updates
+
+- Spark/PySpark is pinned to **3.5.8** across Docker and Python dependencies.
+- Iceberg dependencies remain on the Spark 3.5-compatible line (`1.10.1` artifacts).
+- The Docker Compose stack includes Spark + MinIO services (no Iceberg REST catalog container).
+- Setup and run instructions are aligned with current `mise` tasks and environment files.
 
 ## Architecture
 
-This project implements a bronze→silver→gold ETL pipeline using Apache Iceberg for data lakehouse capabilities. The pipeline includes:
+This project implements a bronze→silver→gold ETL flow:
 
 - **Bronze layer**: Raw data ingestion
-- **Silver layer**: Data cleansing and upsert operations (see `apps/silver_upsert.py`)
-- **Gold layer**: Aggregated and analytics-ready datasets
+- **Silver layer**: Data cleansing and upsert operations (`apps/silver_upsert.py`)
+- **Gold layer**: Aggregated, analytics-ready datasets
 
-The Iceberg jobs under `apps/` handle incremental data processing with ACID guarantees and schema evolution support.
+The pipeline uses an Iceberg Hadoop catalog named `local` with warehouse path `/opt/spark/warehouse`.
 
 ## Project Structure
 
-- `apps/main_job.py` - main job entrypoint for Spark processing
-- `apps/silver_upsert.py` - silver layer upsert job for Iceberg tables
-- `src/transformations.py` - Spark DataFrame transformation helpers
-- `src/utils.py` - Spark utility helpers
-- `tests/` - pytest test suite
-- `requirements.txt` - Python dependencies
-- `mise.toml` - local development tooling and task definitions
+- `apps/main_job.py` - main ETL job entrypoint
+- `apps/silver_upsert.py` - silver-layer Iceberg upsert job
+- `src/transformations.py` - DataFrame transformation and merge helpers
+- `src/utils.py` - Spark session and catalog configuration
+- `tests/` - pytest test suite (logic, integration, quality, and Docker config checks)
+- `requirements.txt` - Python runtime and development dependencies
+- `pyproject.toml` - project metadata and pinned PySpark dependency
+- `mise.toml` - local tooling and task definitions
+- `docker-compose.yml` / `Dockerfile` - local Spark + MinIO stack
 
 ## Prerequisites
 
 - Python 3.11
-- Java (OpenJDK 17)
-- `mise` for managing the local environment
-- Docker and Docker Compose for local development
+- Java 17 (OpenJDK/Temurin)
+- `mise`
+- Docker and Docker Compose
 
 ## Setup
 
-1. Install dependencies:
+1. Create your local environment file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Install dependencies:
 
    ```bash
    mise run bootstrap
    ```
 
-2. Activate the local virtual environment if not already active:
+3. Activate the virtual environment if needed:
 
    ```bash
    source .venv/bin/activate
    ```
 
-## Running Locally with Docker
+4. Add input data (CSV with columns `id,name,status`) to:
 
-The project provides a complete Docker Compose setup for running the Spark + Iceberg + MinIO stack locally.
+   - `data/input/sample.csv`
+
+## Running Locally with Docker
 
 ### Services
 
-The `docker-compose.yml` spins up the following services:
+The `docker-compose.yml` stack starts:
 
-- **spark-master**: Spark master node (Web UI on port 8080)
+- **spark-master**: Spark master node (Web UI on port `8080`)
 - **spark-worker**: Spark worker node
-- **spark-submit**: Container for submitting Spark jobs with project code mounted
-- **minio**: S3-compatible object storage (Console on port 9001, API on port 9000)
-- **minio-setup**: One-time setup container to create the `warehouse` bucket
-- **catalog**: Iceberg REST catalog service (port 8181)
+- **spark-submit**: Spark job container with project code mounted
+- **minio**: S3-compatible object storage (API on `9000`, console on `9001`)
+- **minio-setup**: one-time bucket setup for `warehouse`
 
 ### Starting the Stack
 
-Use the provided mise task to start all services:
+Use the `mise` task:
 
 ```bash
 mise run docker-compose-up
 ```
 
-Or use Docker Compose directly:
+Or directly:
 
 ```bash
-docker compose up
+docker compose up --build -d
 ```
 
-This will start all services in the foreground. Use `docker compose up -d` to run in detached mode.
+### Running ETL Jobs
+
+Run ETL jobs from the `spark-submit` service once the stack is up.
+
+1. Define package coordinates used by both jobs:
+
+   ```bash
+   SPARK_PACKAGES="org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1,org.apache.iceberg:iceberg-aws-bundle:1.10.1"
+   ```
+
+2. Run the full bronze→silver→gold job:
+
+   ```bash
+   docker compose exec spark-submit /opt/spark/bin/spark-submit \
+   --master spark://spark-master:7077 \
+   --packages "${SPARK_PACKAGES}" \
+   /opt/spark/project/apps/main_job.py
+   ```
+
+3. Run the silver upsert job:
+
+   ```bash
+   docker compose exec spark-submit /opt/spark/bin/spark-submit \
+   --master spark://spark-master:7077 \
+   --packages "${SPARK_PACKAGES}" \
+   /opt/spark/project/apps/silver_upsert.py
+   ```
+
+`apps/silver_upsert.py` reads from `s3a://warehouse/input/sample.csv` by default. Upload that object to the `warehouse` bucket first (for example via MinIO Console).
 
 ### Stopping the Stack
 
+Use the `mise` task:
+
 ```bash
-docker compose down
+mise run docker-compose-down
 ```
 
-## Iceberg / MinIO Configuration
+Or directly:
 
-### Endpoints
+```bash
+docker compose down --volumes --remove-orphans --rmi all
+```
 
-- **MinIO Console**: http://localhost:9001
-  - Username: `admin`
-  - Password: `password`
-- **S3 URI**: `s3a://warehouse/`
-- **Iceberg REST Catalog**: http://localhost:8181
+## Endpoints and Storage
 
-### Spark and Iceberg Versions
+- **Spark Master UI**: <http://localhost:8080>
+- **MinIO API**: <http://localhost:9000>
+- **MinIO Console**: <http://localhost:9001>
+- **S3 Warehouse URI**: `s3a://warehouse/`
 
-- **Spark**: 3.5.0
+Default local credentials come from `.env` (`admin` / `password` by default).
+
+## Spark and Iceberg Versions
+
+- **Spark image**: `apache/spark:3.5.8`
+- **PySpark**: `pyspark==3.5.8`
+- **Hadoop AWS**: `org.apache.hadoop:hadoop-aws:3.3.4`
+- **AWS SDK bundle**: `com.amazonaws:aws-java-sdk-bundle:1.12.262`
 - **Iceberg Spark Runtime**: `org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1`
-- **Iceberg AWS Bundle**: `iceberg-aws-bundle:1.10.1`
-- **Iceberg REST Catalog**: `tabulario/iceberg-rest:1.10.1`
+- **Iceberg AWS Bundle**: `org.apache.iceberg:iceberg-aws-bundle:1.10.1`
 
-These version pins ensure compatibility between the Spark runtime, Iceberg client libraries, and the REST catalog server.
+The current stack targets Spark 3.5.x to stay aligned with the Iceberg runtime used in this project.
 
 ## Running Tests
 
-Run the pytest suite:
+Run the test suite:
 
 ```bash
 mise run test
 ```
 
+Run lint checks:
+
+```bash
+mise run lint
+```
+
 ## Coverage
 
-Generate a coverage report with:
+Generate a coverage report:
 
 ```bash
 mise run coverage
 ```
 
 This writes a terminal coverage summary and `coverage.xml`.
-
-## Notes
-
-- The test suite currently includes coverage for both `src/transformations.py` and `src/utils.py`.
-- The project uses `pytest-cov` to collect coverage data.
