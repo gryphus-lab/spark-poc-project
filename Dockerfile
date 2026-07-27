@@ -1,4 +1,4 @@
-FROM apache/spark:3.5.8
+FROM apache/spark:3.5.9
 
 WORKDIR /opt/spark/project
 
