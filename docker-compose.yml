@@ -1,6 +1,6 @@
 services:
   spark-master:
-    image: apache/spark:3.5.8
+    image: apache/spark:3.5.9
     container_name: spark-master
     ports:
       - "8080:8080" # Master Web UI
@@ -8,7 +8,7 @@ services:
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host 0.0.0.0
 
   spark-worker:
-    image: apache/spark:3.5.8
+    image: apache/spark:3.5.9
     container_name: spark-worker
     depends_on:
       - spark-master
