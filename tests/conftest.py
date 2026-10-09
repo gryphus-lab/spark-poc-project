@@ -1,8 +1,9 @@
-import pytest
 import os
+import shutil
 import sys
 import tempfile
-import shutil
+
+import pytest
 from pyspark.sql import SparkSession
 
 
@@ -52,7 +53,7 @@ def spark():
     if not java_home:
         java_home = os.path.expanduser("~/.local/share/mise/installs/java/temurin-21")
         if not os.path.exists(java_home):
-            raise EnvironmentError(
+            raise OSError(
                 f"JAVA_HOME not set and fallback path {java_home} does not exist"
             )
     os.environ["JAVA_HOME"] = java_home

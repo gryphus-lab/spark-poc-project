@@ -19,8 +19,8 @@ UV_PROJECT_ENVIRONMENT = ".venv"
 python.uv_venv_auto = "create|source"
 
 [tasks.bootstrap]
-description = "Install dependencies"
-run = ["uv pip install -r requirements.txt"]
+description = "Install dependencies (creates/updates .venv from the uv lockfile)"
+run = ["uv sync"]
 
 [tasks.info]
 description = "Print project information"
@@ -31,22 +31,22 @@ echo "Virtual Environment: $VIRTUAL_ENV"
 
 [tasks.lint]
 description = "Lint and check formatting with Ruff"
-run = "ruff check . && ruff format --check ."
+run = "uv run ruff check . && uv run ruff format --check ."
 depends = ["bootstrap"]
 
 [tasks.format]
 description = "Format and fix code with Ruff"
-run = "ruff format . && ruff check --fix ."
+run = "uv run ruff format . && uv run ruff check --fix ."
 depends = ["bootstrap"]
 
 [tasks.test]
 description = "Run tests with pytest"
-run = "pytest tests"
+run = "uv run pytest tests"
 depends = ["bootstrap"]
 
 [tasks.coverage]
 description = "Run tests with coverage report"
-run = "pytest tests --cov=src --cov-report=term-missing --cov-report=xml:coverage.xml"
+run = "uv run pytest tests --cov=src --cov-report=term-missing --cov-report=xml:coverage.xml"
 depends = ["bootstrap"]
 
 [tasks.docker-build]

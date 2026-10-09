@@ -7,15 +7,26 @@ authors = [
 ]
 dependencies = [
     "pyspark==4.0.4",
+    "pandas>=2.2,<3.0",
+    "numpy>=1.26,<3.0",
 ]
 requires-python = ">=3.10,<3.13"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "pytest",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
     "ruff>=0.15.11",
 ]
 
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+[tool.uv]
+# The app runs via PYTHONPATH (src/ + apps/ are imported directly, not installed),
+# so treat this as a non-packaged project: uv manages the environment only.
+package = false
+
+[tool.ruff.lint]
+# Broad `except Exception` is intentional around PySpark/py4j calls: Java-side
+# exceptions surfaced through py4j are not reliably subclasses of specific
+# Python exception types, so these sites deliberately catch broadly and report
+# the underlying Java cause.
+ignore = ["BLE001"]

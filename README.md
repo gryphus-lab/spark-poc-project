@@ -26,16 +26,16 @@ The pipeline uses an Iceberg Hadoop catalog named `local` with warehouse path `/
 - `src/transformations.py` - DataFrame transformation and merge helpers
 - `src/utils.py` - Spark session and catalog configuration
 - `tests/` - pytest test suite (logic, integration, quality, and Docker config checks)
-- `requirements.txt` - Python runtime and development dependencies
-- `pyproject.toml` - project metadata and pinned PySpark dependency
+- `pyproject.toml` - project metadata, runtime dependencies, and the `dev` dependency group
+- `uv.lock` - fully pinned, resolved dependency lockfile (managed by `uv`)
 - `mise.toml` - local tooling and task definitions
 - `docker-compose.yml` / `Dockerfile` - local Spark + MinIO stack
 
 ## Prerequisites
 
-- Python 3.11
-- Java 17 (OpenJDK/Temurin)
-- `mise`
+- Python 3.12 (3.10+ supported)
+- Java 21 (OpenJDK/Temurin; Spark 4.0 supports 17/21/25)
+- `mise` (provisions the toolchain, including `uv`)
 - Docker and Docker Compose
 
 ## Setup
@@ -46,13 +46,20 @@ The pipeline uses an Iceberg Hadoop catalog named `local` with warehouse path `/
    cp .env.example .env
    ```
 
-2. Install dependencies:
+2. Install dependencies (syncs `.venv` from `uv.lock`):
 
    ```bash
-   mise run bootstrap
+   mise run bootstrap    # == uv sync
    ```
 
-3. Activate the virtual environment if needed:
+   Or run `uv` directly without mise:
+
+   ```bash
+   uv sync               # runtime + dev groups
+   uv sync --no-dev      # runtime only
+   ```
+
+3. Activate the virtual environment if needed (or prefix commands with `uv run`):
 
    ```bash
    source .venv/bin/activate
