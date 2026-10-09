@@ -1,5 +1,5 @@
 # Core Spark Processing
-pyspark==3.5.8
+pyspark==3.5.9
 
 # Data
 pandas>=3.0.3
