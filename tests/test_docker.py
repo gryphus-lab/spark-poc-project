@@ -20,8 +20,10 @@ def test_dockerfile_exists_and_contains_required_stages():
     assert DOCKERFILE.exists(), "Dockerfile must exist in the repository root"
     content = DOCKERFILE.read_text()
 
-    assert "FROM apache/spark:3.5.9" in content
-    assert "COPY requirements-runtime.txt ." in content
+    assert "FROM apache/spark:4.0.4" in content
+    # Dependencies are installed from the uv lockfile, not pip/requirements.
+    assert "COPY pyproject.toml uv.lock" in content
+    assert "uv sync" in content
     assert "COPY" in content and "src" in content
     assert "COPY" in content and "apps" in content
     assert re.search(r"USER \d+", content)

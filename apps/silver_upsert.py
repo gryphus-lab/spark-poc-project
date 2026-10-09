@@ -1,7 +1,9 @@
-from pyspark.sql.functions import current_timestamp
-from src.utils import get_spark_session
-from src.transformations import upsert_to_silver, clean_text_data, EXPECTED_SCHEMA
 import logging
+
+from pyspark.sql.functions import current_timestamp
+
+from src.transformations import EXPECTED_SCHEMA, clean_text_data, upsert_to_silver
+from src.utils import get_spark_session
 
 logger = logging.getLogger(__name__)
 

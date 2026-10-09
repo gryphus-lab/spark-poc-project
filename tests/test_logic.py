@@ -1,8 +1,10 @@
+import uuid
+
+from pyspark.sql import SparkSession
+from pyspark.sql.types import IntegerType, StringType, StructField, StructType
+
 from src.transformations import clean_text_data, upsert_to_silver
 from src.utils import get_spark_session
-from pyspark.sql import SparkSession
-from pyspark.sql.types import StringType, StructField, StructType, IntegerType
-import uuid
 
 
 def test_clean_text_data(spark):
@@ -108,6 +110,7 @@ def test_clean_text_data_preserves_other_columns(spark):
 def test_upsert_to_silver_insert_only(spark):
     """Test upsert_to_silver function for insert-only case."""
     from pyspark.sql.functions import current_timestamp
+
     from tests.conftest import _ensure_iceberg_available
 
     # Skip test if Iceberg is not available

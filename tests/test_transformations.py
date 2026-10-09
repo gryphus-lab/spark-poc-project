@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from src.transformations import clean_text_data, upsert_to_silver
 
 

@@ -1,8 +1,9 @@
-from pyspark.sql.functions import col, lower
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType
-from uuid import uuid4
-import re
 import logging
+import re
+from uuid import uuid4
+
+from pyspark.sql.functions import col, lower
+from pyspark.sql.types import IntegerType, StringType, StructField, StructType
 
 logger = logging.getLogger(__name__)
 

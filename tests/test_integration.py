@@ -1,4 +1,5 @@
 import pytest
+
 from apps import main_job
 from src.transformations import EXPECTED_SCHEMA, upsert_to_silver
 
