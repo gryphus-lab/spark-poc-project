@@ -35,22 +35,22 @@ def spark():
     """
     Create and yield a single SparkSession configured for Apache Iceberg for use in tests.
 
-    This fixture ensures any existing active SparkSession is stopped, enforces a Java 17 runtime (using JAVA_HOME or a validated fallback), configures PySpark to use the current Python executable, and creates a temporary Iceberg warehouse. The SparkSession is torn down and the temporary warehouse directory is removed when the fixture finalizes; if session creation fails the temporary directory is removed before re-raising the error.
+    This fixture ensures any existing active SparkSession is stopped, enforces a Java 21 runtime (using JAVA_HOME or a validated fallback), configures PySpark to use the current Python executable, and creates a temporary Iceberg warehouse. The SparkSession is torn down and the temporary warehouse directory is removed when the fixture finalizes; if session creation fails the temporary directory is removed before re-raising the error.
 
     Returns:
         spark (pyspark.sql.SparkSession): A SparkSession preconfigured with Iceberg catalog and extensions.
 
     Raises:
-        EnvironmentError: If JAVA_HOME is not set and the fallback Java 17 path does not exist.
+        EnvironmentError: If JAVA_HOME is not set and the fallback Java 21 path does not exist.
     """
     session = SparkSession.getActiveSession()
     if session:
         session.stop()
 
-    # 2. Setup Environment (Ensure Java 17 and a supported Python are used)
+    # 2. Setup Environment (Ensure Java 21 and a supported Python are used)
     java_home = os.environ.get("JAVA_HOME")
     if not java_home:
-        java_home = os.path.expanduser("~/.local/share/mise/installs/java/temurin-17")
+        java_home = os.path.expanduser("~/.local/share/mise/installs/java/temurin-21")
         if not os.path.exists(java_home):
             raise EnvironmentError(
                 f"JAVA_HOME not set and fallback path {java_home} does not exist"
@@ -67,8 +67,8 @@ def spark():
     # Absolute URI is mandatory for Hadoop catalogs on macOS/Linux
     warehouse_uri = f"file://{os.path.abspath(warehouse_dir)}"
 
-    # 4. Spark 3.5 + Iceberg 1.10.1 Coordinates
-    ICEBERG_PKG = "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.10.1"
+    # 4. Spark 4.0 (Scala 2.13) + Iceberg 1.11.0 Coordinates
+    ICEBERG_PKG = "org.apache.iceberg:iceberg-spark-runtime-4.0_2.13:1.11.0"
 
     builder = (
         SparkSession.builder.master("local[1]")
@@ -81,7 +81,7 @@ def spark():
         .config("spark.sql.catalog.local", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.local.type", "hadoop")
         .config("spark.sql.catalog.local.warehouse", warehouse_uri)
-        # Fix Java 17 reflection for Spark internals
+        # Fix Java 17/21 reflection for Spark internals
         .config(
             "spark.driver.extraJavaOptions",
             "--add-opens=java.base/java.lang=ALL-UNNAMED "

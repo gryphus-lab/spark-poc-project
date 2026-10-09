@@ -1,6 +1,8 @@
 [tools]
-java = "temurin-17"
-python = "3.11"
+# Spark 4.0 runs on Java 17/21/25; 21 LTS is the recommended target.
+java = "temurin-21"
+# Spark 4.0 supports Python 3.10+.
+python = "3.12"
 uv = "latest"
 ruff = "latest"
 
